@@ -4,21 +4,25 @@
     "description": "CLI tool that can load a file and create big number of streams (3000+)",
     "main": "index.js",
     "scripts": {
-      "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "echo \"Error: no test specified\" && exit 1"
     },
     "author": "luka <luka@streamflow.finance>",
     "license": "UNLICENSED",
     "dependencies": {
-      "@inquirer/select": "^0.1.0",
-      "@project-serum/anchor": "^0.26.0",
-      "@solana/spl-token-registry": "^0.2.4574",
-      "@solana/web3.js": "^1.74.0",
-      "bignumber.js": "^9.1.1",
-      "bs58": "^5.0.0",
-      "chalk": "^4.0.0",
-      "commander": "^10.0.0",
-      "figlet": "^1.5.2",
-      "inquirer": "^9.1.5",
-      "node-fetch": "^2.6.9"
-    }
-  }
+        "@inquirer/select": "^0.1.0",
+        "@project-serum/anchor": "^0.26.0",
+        "@solana/spl-token-registry": "^0.2.4574",
+        "@solana/web3.js": "^1.74.0",
+        "bignumber.js": "^9.1.1",
+        "bs58": "^5.0.0",
+        "chalk": "^4.0.0",
+        "commander": "^10.0.0",
+        "csv-parse": "^5.3.9",
+        "csv-parser": "^3.0.0",
+        "figlet": "^1.5.2",
+        "get-stream": "^6.0.1",
+        "inquirer": "^9.1.5",
+        "node-fetch": "^2.6.9"
+    },
+    "type": "module"
+}
