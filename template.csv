@@ -1,4 +1,6 @@
 Amount,Wallet Address,Title,Email,Comment (ignored column)
-1337,CTKGuKct3cajH2dqND35Qy3Zwqtwy3wmyUxYK1xbE5ti,Seed Round VC #1,email@example.com,"This column, and any subsequent ones, are ignored."
-1,HqDGZjaVRXJ9MGRQEw7qDc2rAr6iH1n1kAQdCZaCMfMZ,,,Title and Email fields are optional
-1.337,5SEpbdjFK5FxwTvfsGMXVQTD2v4M2c5tyRTxhdsPkgDw,,bad@email,Amount is in human-readable format (we'll take care of token decimals)
+110000,CTKGuKct3cajH2dqND35Qy3Zwqtwy3wmyUxYK1xbE5ti,Seed Round VC #1,email@example.com,"This column, and any subsequent ones, are ignored."
+0.0011,HqDGZjaVRXJ9MGRQEw7qDc2rAr6iH1n1kAQdCZaCMfMZ,,,Title and Email fields are optional
+0.1,
+0.5,asdfasdf,
+0.001337,5SEpbdjFK5FxwTvfsGMXVQTD2v4M2c5tyRTxhdsPkgDw,,bad@email,Amount is in human-readable format (we'll take care of token decimals)
