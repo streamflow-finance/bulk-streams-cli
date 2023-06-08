@@ -12,6 +12,8 @@ import { processTokenTransfer } from "./processors/tokenTransferProcessor";
 import { createErrorFileStream, createErrorStream, createInvalidFileStream, createInvalidStream, createSuccessFileStream, createSuccessStream } from "./utils/outputStream";
 import chalk from "chalk";
 import EventEmitter from "events";
+import { getStreamParameters } from "./CLIService/streamParameters";
+import { processVestingContract } from "./processors/vestingContractProcessor";
 
 
 (async () => {
@@ -44,6 +46,10 @@ import EventEmitter from "events";
   const recipientsPath = cli.getOptions().recipients;
   const rate = parseInt(cli.getOptions().speed);
 
+  // Processing vesting parameters
+  const isVestingContract = cli.getOptions().vesting;
+  const vestingContractParameters = isVestingContract ? await getStreamParameters() : null;
+
   const progress = new RecipientProgress();
 
   const recipientStream: Transform = createRecipientStream(recipientsPath, rate);
@@ -73,13 +79,17 @@ import EventEmitter from "events";
       }
 
       try {
-        const txId = await processTokenTransfer(connection, keypair, row, mint, decimals);
+        const txId = isVestingContract
+          ? await processVestingContract(connection, keypair, row, mint, decimals, vestingContractParameters!)
+          : await processTokenTransfer(connection, keypair, row, mint, decimals);
+
         successStream.write([row.amount, row.address.toBase58(), row.name, row.email, txId]);
         progress.success();
         successCounter++;
       } catch (e) {
         progress.retry();
         errorStream.write(row.rawData.split(","));
+        console.info(e);
         errorCounter++;
       }
       activeProcessing--;
@@ -92,13 +102,14 @@ import EventEmitter from "events";
     processingEvent.on("process_finished", async () => {
       // All the processing transfers are finished
       if (processingStarted && activeProcessing === 0) {
-        console.log("Initial attempts are finished!");
         progress.end();
-
         console.log("CSV file has been processed!");
-        console.log(chalk.green(`${successCounter} Transfers have been successful!`));
-        console.log(chalk.yellow(`${errorCounter} Transfers have failed, you can retry transfers by reusing error.csv output file!`));
-        console.log(chalk.red(`There were ${invalidCounter} invalid rows in the provided file!`));
+        if (successCounter)
+          console.log(chalk.green(`${successCounter} Transfers have been successful!`));
+        if (errorCounter)
+          console.log(chalk.yellow(`${errorCounter} Transfers have failed, you can retry transfers by reusing error.csv output file!`));
+        if (invalidCounter)
+          console.log(chalk.red(`There were ${invalidCounter} invalid rows in the provided file!`));
 
         const endTime = process.hrtime(startTime);
         const elapsedSeconds = (endTime[0] + (endTime[1] / 1e9)).toFixed(3);

@@ -41,6 +41,12 @@ export const cliOptions: IOptionConfig<ICLIOptions>[] = [
     request: "Please specify data processing rate.",
     default: defaultSpeed,
   },
+  {
+    letter: "v",
+    key: "vesting",
+    description: `If the transfers should be Streamflow vesting contracts.`,
+    request: "",
+  },
 ];
 
 export interface ICLIOptions extends Record<string, string> {

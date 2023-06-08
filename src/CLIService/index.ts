@@ -39,7 +39,7 @@ export class CLIService<TOptions extends Record<string, unknown>> {
     this.options = this.program.opts();
 
     // Inquire missing options
-    const missingOptions = this.optionConfigurations.filter(optionConfig => !this.options[optionConfig.key]);
+    const missingOptions = this.optionConfigurations.filter(optionConfig => !this.options[optionConfig.key] && !!optionConfig.valueType);
     const inquiredOptions = await inquirer.prompt(missingOptions.map(optionConfig => ({
         type: "input",
         name: optionConfig.key,
