@@ -2,16 +2,17 @@ import { Connection, Keypair, PublicKey, SYSVAR_RENT_PUBKEY, SystemProgram, Tran
 import { StreamflowSolana } from "@streamflow/stream";
 import { IRecipientInfo } from "../utils/recipientStream";
 import { ICluster } from "@streamflow/stream/dist/common/types";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddress,
+  getOrCreateAssociatedTokenAccount,
+} from "@solana/spl-token";
 import BN from "bn.js";
 import { ICLIStreamParameters } from "../CLIService/streamParameters";
 
-const {
-  PROGRAM_ID,
-  STREAMFLOW_TREASURY_PUBLIC_KEY,
-  FEE_ORACLE_PUBLIC_KEY,
-  WITHDRAWOR_PUBLIC_KEY,
-} = StreamflowSolana.constants;
+const { PROGRAM_ID, STREAMFLOW_TREASURY_PUBLIC_KEY, FEE_ORACLE_PUBLIC_KEY, WITHDRAWOR_PUBLIC_KEY } =
+  StreamflowSolana.constants;
 const { createStreamInstruction } = StreamflowSolana;
 const programId = PROGRAM_ID[ICluster.Mainnet];
 
@@ -25,19 +26,27 @@ export const processVestingContract = async (
 ): Promise<string> => {
   const pid = new PublicKey(programId);
   const metadata = Keypair.generate();
-  const [escrowTokens] = await PublicKey.findProgramAddress(
-    [Buffer.from("strm"), metadata.publicKey.toBuffer()],
-    pid
-  );
+  const [escrowTokens] = await PublicKey.findProgramAddress([Buffer.from("strm"), metadata.publicKey.toBuffer()], pid);
 
   const senderTokens = await getAssociatedTokenAddress(mint, sender.publicKey);
   const recipientTokens = await getOrCreateAssociatedTokenAccount(connection, sender, mint, recipientInfo.address);
-  const streamflowTreasuryTokens = await getOrCreateAssociatedTokenAccount(connection, sender, mint, STREAMFLOW_TREASURY_PUBLIC_KEY);
+  const streamflowTreasuryTokens = await getOrCreateAssociatedTokenAccount(
+    connection,
+    sender,
+    mint,
+    STREAMFLOW_TREASURY_PUBLIC_KEY
+  );
   const amount = new BN(recipientInfo.amount * 10e9).mul(new BN(10).pow(new BN(decimals))).div(new BN(10e9));
   const period = streamParameters.duration / streamParameters.unlockCount;
   const amountWithoutCliff = amount.mul(new BN(10000 - 100 * streamParameters.cliffPercentage)).div(new BN(10000));
   const amountPerPeriod = amountWithoutCliff.div(new BN(streamParameters.unlockCount));
   const cliffAmount = amount.mul(new BN(100 * streamParameters.cliffPercentage)).div(new BN(10000));
+  let automaticWithdrawal = streamParameters.automaticWithdrawal;
+  let withdrawFrequency = new BN(period);
+  if (streamParameters.disableAutoSettle) {
+    automaticWithdrawal = true;
+    withdrawFrequency = new BN(0);
+  }
 
   const ix = createStreamInstruction(
     {
@@ -49,12 +58,12 @@ export const processVestingContract = async (
       cliffAmount,
       cancelableBySender: streamParameters.cancelableBySender,
       cancelableByRecipient: streamParameters.cancelableByRecipient,
-      automaticWithdrawal: streamParameters.automaticWithdrawal,
+      automaticWithdrawal,
       transferableBySender: streamParameters.transferableBySender,
       transferableByRecipient: streamParameters.transferableByRecipient,
       canTopup: streamParameters.canTopup,
       name: recipientInfo.name ?? "",
-      withdrawFrequency: new BN(period),
+      withdrawFrequency,
     },
     pid,
     {
@@ -77,7 +86,7 @@ export const processVestingContract = async (
       withdrawor: WITHDRAWOR_PUBLIC_KEY,
       systemProgram: SystemProgram.programId,
     }
-  )
+  );
 
   const recentBlockInfo = await connection.getLatestBlockhash();
 

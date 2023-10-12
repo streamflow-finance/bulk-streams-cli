@@ -12,46 +12,62 @@ export interface ICLIStreamParameters {
   automaticWithdrawal: boolean;
   transferableBySender: boolean;
   transferableByRecipient: boolean;
+  disableAutoSettle: boolean;
   canTopup: boolean;
 }
 
 export const getStreamParameters = async (): Promise<ICLIStreamParameters> => {
   const start = await promptDateTime("start", "(leave empty to start immediately)");
   const duration = await promtTimePeriod("vesting duration");
-  const { unlockCountStr } = await inquirer.prompt([{
-    type: "input",
-    name: "unlockCountStr",
-    message: `How many unlocks should be during vesting period?`,
-  }]);
+  const { unlockCountStr } = await inquirer.prompt([
+    {
+      type: "input",
+      name: "unlockCountStr",
+      message: `How many unlocks should be during vesting period?`,
+    },
+  ]);
   const unlockCount = parseInt(unlockCountStr);
-  const { cliffPercentage } = await inquirer.prompt([{
-    type: "input",
-    name: "cliffPercentage",
-    message: `Percentage to be unlocked on start (cliff)?`,
-  }]);
+  const { cliffPercentage } = await inquirer.prompt([
+    {
+      type: "input",
+      name: "cliffPercentage",
+      message: `Percentage to be unlocked on start (cliff)?`,
+    },
+  ]);
   const vestingOptions = await multiselect({
     message: "Vesting contract options",
-    choices: [{
-      name: "Is Cancelable By Sender",
-      value: "cancelableBySender",
-      checked: true,
-    },{
-      name: "Is Cancelable By Recipient",
-      value: "cancelableByRecipient"
-    },{
-      name: "Is Transferable By Sender",
-      value: "transferableBySender"
-    },{
-      name: "Is Transferable By Recipient",
-      value: "transferableByRecipient",
-      checked: true,
-    },{
-      name: "Automatic Withdrawal is enabled",
-      value: "automaticWithdrawal"
-    },{
-      name: "Vesting contract can be Topped up",
-      value: "canTopup"
-    },],
+    choices: [
+      {
+        name: "Is Cancelable By Sender",
+        value: "cancelableBySender",
+        checked: true,
+      },
+      {
+        name: "Is Cancelable By Recipient",
+        value: "cancelableByRecipient",
+      },
+      {
+        name: "Is Transferable By Sender",
+        value: "transferableBySender",
+      },
+      {
+        name: "Is Transferable By Recipient",
+        value: "transferableByRecipient",
+        checked: true,
+      },
+      {
+        name: "Automatic Withdrawal is enabled",
+        value: "automaticWithdrawal",
+      },
+      {
+        name: "Vesting contract can be Topped up",
+        value: "canTopup",
+      },
+      {
+        name: "Disable Auto Settlement at the end of Stream",
+        value: "disableAutoSettle",
+      },
+    ],
   });
   const vestingOptionsSet = new Set(vestingOptions);
 
@@ -61,6 +77,11 @@ export const getStreamParameters = async (): Promise<ICLIStreamParameters> => {
   const transferableBySender = vestingOptionsSet.has("transferableBySender");
   const transferableByRecipient = vestingOptionsSet.has("transferableByRecipient");
   const canTopup = vestingOptionsSet.has("canTopup");
+  const disableAutoSettle = vestingOptionsSet.has("disableAutoSettle");
+
+  if (automaticWithdrawal && disableAutoSettle) {
+    throw new Error("Automatic Withdrawal can't be used with Disabled Auto Settlement");
+  }
 
   return {
     start,
@@ -72,6 +93,7 @@ export const getStreamParameters = async (): Promise<ICLIStreamParameters> => {
     automaticWithdrawal,
     transferableBySender,
     transferableByRecipient,
+    disableAutoSettle,
     canTopup,
-  }
+  };
 };

@@ -9,12 +9,18 @@ import { IRecipientInfo, createRecipientStream } from "./utils/recipientStream";
 import { RecipientProgress } from "./utils/progress";
 import { Transform } from "stream";
 import { processTokenTransfer } from "./processors/tokenTransferProcessor";
-import { createErrorFileStream, createErrorStream, createInvalidFileStream, createInvalidStream, createSuccessFileStream, createSuccessStream } from "./utils/outputStream";
+import {
+  createErrorFileStream,
+  createErrorStream,
+  createInvalidFileStream,
+  createInvalidStream,
+  createSuccessFileStream,
+  createSuccessStream,
+} from "./utils/outputStream";
 import chalk from "chalk";
 import EventEmitter from "events";
-import { getStreamParameters } from "./CLIService/streamParameters";
+import { ICLIStreamParameters, getStreamParameters } from "./CLIService/streamParameters";
 import { processVestingContract } from "./processors/vestingContractProcessor";
-
 
 (async () => {
   const cli = new CLIService<ICLIOptions>(cliOptions);
@@ -36,7 +42,7 @@ import { processVestingContract } from "./processors/vestingContractProcessor";
   const tokenMetaMap = await getTokenMetadataMap();
 
   if (!cli.getOptions().token) {
-    await cli.specifyOption("token", "Select a token to distribute.", prepareUserChoices(userTokens, tokenMetaMap))
+    await cli.specifyOption("token", "Select a token to distribute.", prepareUserChoices(userTokens, tokenMetaMap));
   }
 
   const mintStr = cli.getOptions().token;
@@ -48,7 +54,17 @@ import { processVestingContract } from "./processors/vestingContractProcessor";
 
   // Processing vesting parameters
   const isVestingContract = cli.getOptions().vesting;
-  const vestingContractParameters = isVestingContract ? await getStreamParameters() : null;
+  let vestingContractParameters: ICLIStreamParameters | null = null;
+  try {
+    if (isVestingContract) {
+      vestingContractParameters = await getStreamParameters();
+    }
+  } catch (error) {
+    let message: string;
+    if (error instanceof Error) message = error.message;
+    else message = String(error);
+    cli.error(message);
+  }
 
   const progress = new RecipientProgress();
 
@@ -67,53 +83,55 @@ import { processVestingContract } from "./processors/vestingContractProcessor";
   let activeProcessing = 0;
   let processingStarted = false;
   const processingEvent = new EventEmitter();
-  recipientStream.on('data', async (row: IRecipientInfo) => {
+  recipientStream.on("data", async (row: IRecipientInfo) => {
     activeProcessing++;
     processingStarted = true;
-      if (!row.isValid) {
-        invalidStream.write(row.rawData.split(","));
-        progress.invalid();
-        invalidCounter++;
-        activeProcessing--;
-        return;
-      }
-
-      try {
-        const txId = isVestingContract
-          ? await processVestingContract(connection, keypair, row, mint, decimals, vestingContractParameters!)
-          : await processTokenTransfer(connection, keypair, row, mint, decimals);
-
-        successStream.write([row.amount, row.address.toBase58(), row.name, row.email, txId]);
-        progress.success();
-        successCounter++;
-      } catch (e) {
-        progress.retry();
-        errorStream.write(row.rawData.split(","));
-        console.info(e);
-        errorCounter++;
-      }
+    if (!row.isValid) {
+      invalidStream.write(row.rawData.split(","));
+      progress.invalid();
+      invalidCounter++;
       activeProcessing--;
-      processingEvent.emit("process_finished");
-    });
+      return;
+    }
 
-    // NOTE: before moving this to stream.on("end") callback,
-    // consider that stream end will be called much earlier then data is done processing
-    // hence this hacky way
-    processingEvent.on("process_finished", async () => {
-      // All the processing transfers are finished
-      if (processingStarted && activeProcessing === 0) {
-        progress.end();
-        console.log("CSV file has been processed!");
-        if (successCounter)
-          console.log(chalk.green(`${successCounter} Transfers have been successful!`));
-        if (errorCounter)
-          console.log(chalk.yellow(`${errorCounter} Transfers have failed, you can retry transfers by reusing error.csv output file!`));
-        if (invalidCounter)
-          console.log(chalk.red(`There were ${invalidCounter} invalid rows in the provided file!`));
+    try {
+      const txId = isVestingContract
+        ? await processVestingContract(connection, keypair, row, mint, decimals, vestingContractParameters!)
+        : await processTokenTransfer(connection, keypair, row, mint, decimals);
 
-        const endTime = process.hrtime(startTime);
-        const elapsedSeconds = (endTime[0] + (endTime[1] / 1e9)).toFixed(3);
-        console.log('It took ' + elapsedSeconds + 'seconds');
-      }
-    });
+      successStream.write([row.amount, row.address.toBase58(), row.name, row.email, txId]);
+      progress.success();
+      successCounter++;
+    } catch (e) {
+      progress.retry();
+      errorStream.write(row.rawData.split(","));
+      console.info(e);
+      errorCounter++;
+    }
+    activeProcessing--;
+    processingEvent.emit("process_finished");
+  });
+
+  // NOTE: before moving this to stream.on("end") callback,
+  // consider that stream end will be called much earlier then data is done processing
+  // hence this hacky way
+  processingEvent.on("process_finished", async () => {
+    // All the processing transfers are finished
+    if (processingStarted && activeProcessing === 0) {
+      progress.end();
+      console.log("CSV file has been processed!");
+      if (successCounter) console.log(chalk.green(`${successCounter} Transfers have been successful!`));
+      if (errorCounter)
+        console.log(
+          chalk.yellow(
+            `${errorCounter} Transfers have failed, you can retry transfers by reusing error.csv output file!`
+          )
+        );
+      if (invalidCounter) console.log(chalk.red(`There were ${invalidCounter} invalid rows in the provided file!`));
+
+      const endTime = process.hrtime(startTime);
+      const elapsedSeconds = (endTime[0] + endTime[1] / 1e9).toFixed(3);
+      console.log("It took " + elapsedSeconds + "seconds");
+    }
+  });
 })();
