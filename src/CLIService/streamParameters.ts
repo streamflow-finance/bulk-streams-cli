@@ -56,7 +56,7 @@ export const getStreamParameters = async (): Promise<ICLIStreamParameters> => {
         checked: true,
       },
       {
-        name: "Automatic Withdrawal is enabled",
+        name: "Auto-Claim is enabled",
         value: "automaticWithdrawal",
       },
       {
@@ -80,7 +80,7 @@ export const getStreamParameters = async (): Promise<ICLIStreamParameters> => {
   const disableAutoSettle = vestingOptionsSet.has("disableAutoSettle");
 
   if (automaticWithdrawal && disableAutoSettle) {
-    throw new Error("Automatic Withdrawal can't be used with Disabled Auto Settlement");
+    throw new Error("Auto-Claim can't be used with Disabled Auto Settlement");
   }
 
   return {
