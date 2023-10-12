@@ -54,17 +54,7 @@ import { processVestingContract } from "./processors/vestingContractProcessor";
 
   // Processing vesting parameters
   const isVestingContract = cli.getOptions().vesting;
-  let vestingContractParameters: ICLIStreamParameters | null = null;
-  try {
-    if (isVestingContract) {
-      vestingContractParameters = await getStreamParameters();
-    }
-  } catch (error) {
-    let message: string;
-    if (error instanceof Error) message = error.message;
-    else message = String(error);
-    cli.error(message);
-  }
+  const vestingContractParameters = isVestingContract ? await getStreamParameters() : null;
 
   const progress = new RecipientProgress();
 

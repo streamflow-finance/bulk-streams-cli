@@ -12,7 +12,6 @@ export interface ICLIStreamParameters {
   automaticWithdrawal: boolean;
   transferableBySender: boolean;
   transferableByRecipient: boolean;
-  disableAutoSettle: boolean;
   canTopup: boolean;
 }
 
@@ -63,10 +62,6 @@ export const getStreamParameters = async (): Promise<ICLIStreamParameters> => {
         name: "Vesting contract can be Topped up",
         value: "canTopup",
       },
-      {
-        name: "Disable Auto Settlement at the end of Stream",
-        value: "disableAutoSettle",
-      },
     ],
   });
   const vestingOptionsSet = new Set(vestingOptions);
@@ -77,11 +72,6 @@ export const getStreamParameters = async (): Promise<ICLIStreamParameters> => {
   const transferableBySender = vestingOptionsSet.has("transferableBySender");
   const transferableByRecipient = vestingOptionsSet.has("transferableByRecipient");
   const canTopup = vestingOptionsSet.has("canTopup");
-  const disableAutoSettle = vestingOptionsSet.has("disableAutoSettle");
-
-  if (automaticWithdrawal && disableAutoSettle) {
-    throw new Error("Auto-Claim can't be used with Disabled Auto Settlement");
-  }
 
   return {
     start,
@@ -93,7 +83,6 @@ export const getStreamParameters = async (): Promise<ICLIStreamParameters> => {
     automaticWithdrawal,
     transferableBySender,
     transferableByRecipient,
-    disableAutoSettle,
     canTopup,
   };
 };

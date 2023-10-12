@@ -43,7 +43,7 @@ export const processVestingContract = async (
   const cliffAmount = amount.mul(new BN(100 * streamParameters.cliffPercentage)).div(new BN(10000));
   let automaticWithdrawal = streamParameters.automaticWithdrawal;
   let withdrawFrequency = new BN(period);
-  if (streamParameters.disableAutoSettle) {
+  if (!automaticWithdrawal) {
     automaticWithdrawal = true;
     withdrawFrequency = new BN(0);
   }
