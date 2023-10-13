@@ -18,7 +18,7 @@
         "@solana/spl-token": "^0.3.7",
         "@solana/spl-token-registry": "^0.2.7",
         "@solana/web3.js": "^1.74.0",
-        "@streamflow/stream": "^4.1.0-beta.14",
+        "@streamflow/stream": "^5.2.8",
         "bignumber.js": "^9.1.1",
         "bs58": "^5.0.0",
         "chalk": "^4.0.0",
