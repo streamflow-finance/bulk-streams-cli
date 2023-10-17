@@ -14,16 +14,17 @@ import { ICLIStreamParameters } from "../CLIService/streamParameters";
 const { PROGRAM_ID, STREAMFLOW_TREASURY_PUBLIC_KEY, FEE_ORACLE_PUBLIC_KEY, WITHDRAWOR_PUBLIC_KEY } =
   StreamflowSolana.constants;
 const { createStreamInstruction } = StreamflowSolana;
-const programId = PROGRAM_ID[ICluster.Mainnet];
 
 export const processVestingContract = async (
   connection: Connection,
+  useDevnet: boolean,
   sender: Keypair,
   recipientInfo: IRecipientInfo,
   mint: PublicKey,
   decimals: number,
   streamParameters: ICLIStreamParameters
 ): Promise<string> => {
+  const programId = PROGRAM_ID[useDevnet ? ICluster.Devnet : ICluster.Mainnet];
   const pid = new PublicKey(programId);
   const metadata = Keypair.generate();
   const [escrowTokens] = await PublicKey.findProgramAddress([Buffer.from("strm"), metadata.publicKey.toBuffer()], pid);
