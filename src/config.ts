@@ -47,6 +47,12 @@ export const cliOptions: IOptionConfig<ICLIOptions>[] = [
     description: `If the transfers should be Streamflow vesting contracts.`,
     request: "",
   },
+  {
+    letter: "d",
+    key: "devnet",
+    description: `If Devnet program address should be used. RPC Endpoint should match the network.`,
+    request: "",
+  },
 ];
 
 export interface ICLIOptions extends Record<string, string> {

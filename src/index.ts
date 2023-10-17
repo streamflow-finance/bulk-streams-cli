@@ -19,7 +19,7 @@ import {
 } from "./utils/outputStream";
 import chalk from "chalk";
 import EventEmitter from "events";
-import { ICLIStreamParameters, getStreamParameters } from "./CLIService/streamParameters";
+import { getStreamParameters } from "./CLIService/streamParameters";
 import { processVestingContract } from "./processors/vestingContractProcessor";
 
 (async () => {
@@ -54,6 +54,7 @@ import { processVestingContract } from "./processors/vestingContractProcessor";
 
   // Processing vesting parameters
   const isVestingContract = cli.getOptions().vesting;
+  const useDevnet = cli.getOptions().devnet;
   const vestingContractParameters = isVestingContract ? await getStreamParameters() : null;
 
   const progress = new RecipientProgress();
@@ -86,7 +87,15 @@ import { processVestingContract } from "./processors/vestingContractProcessor";
 
     try {
       const txId = isVestingContract
-        ? await processVestingContract(connection, keypair, row, mint, decimals, vestingContractParameters!)
+        ? await processVestingContract(
+            connection,
+            !!useDevnet,
+            keypair,
+            row,
+            mint,
+            decimals,
+            vestingContractParameters!
+          )
         : await processTokenTransfer(connection, keypair, row, mint, decimals);
 
       successStream.write([row.amount, row.address.toBase58(), row.name, row.email, txId]);
