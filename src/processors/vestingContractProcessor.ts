@@ -37,8 +37,7 @@ export const processVestingContract = async (
     mint,
     STREAMFLOW_TREASURY_PUBLIC_KEY
   );
-  const amount = new BN(recipientInfo.amount)
-    .mul(new BN(10e9))
+  const amount = new BN((recipientInfo.amount * 10e9).toFixed(0))
     .mul(new BN(10).pow(new BN(decimals)))
     .div(new BN(10e9));
   const period = streamParameters.duration / streamParameters.unlockCount;

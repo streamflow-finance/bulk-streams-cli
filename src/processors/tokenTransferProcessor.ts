@@ -17,8 +17,7 @@ export const processTokenTransfer = async (
   const recentBlockInfo = await connection.getLatestBlockhash();
   const recipientAta = await getOrCreateAssociatedTokenAccount(connection, sender, mint, recipientInfo.address);
   const senderAta = await getAssociatedTokenAddress(mint, sender.publicKey);
-  const amount = new BN(recipientInfo.amount)
-    .mul(new BN(10e9))
+  const amount = new BN((recipientInfo.amount * 10e9).toFixed(0))
     .mul(new BN(10).pow(new BN(decimals)))
     .div(new BN(10e9))
     .toString();
