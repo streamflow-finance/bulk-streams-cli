@@ -4,6 +4,7 @@ import {
   getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
 import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
+import { getBN } from "@streamflow/stream";
 import BN from "bn.js";
 import { IRecipientInfo } from "../utils/recipientStream";
 
@@ -17,10 +18,7 @@ export const processTokenTransfer = async (
   const recentBlockInfo = await connection.getLatestBlockhash();
   const recipientAta = await getOrCreateAssociatedTokenAccount(connection, sender, mint, recipientInfo.address);
   const senderAta = await getAssociatedTokenAddress(mint, sender.publicKey);
-  const amount = new BN((recipientInfo.amount * 10e9).toFixed(0))
-    .mul(new BN(10).pow(new BN(decimals)))
-    .div(new BN(10e9))
-    .toString();
+  const amount = getBN(recipientInfo.amount, decimals).toString();
 
   const ix = createTransferCheckedInstruction(
     senderAta,
