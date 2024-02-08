@@ -1,5 +1,5 @@
 import { Connection, Keypair, PublicKey, SYSVAR_RENT_PUBKEY, SystemProgram, Transaction } from "@solana/web3.js";
-import { StreamflowSolana } from "@streamflow/stream";
+import { StreamflowSolana, getBN } from "@streamflow/stream";
 import { IRecipientInfo } from "../utils/recipientStream";
 import { ICluster } from "@streamflow/stream/dist/common/types";
 import {
@@ -37,7 +37,7 @@ export const processVestingContract = async (
     mint,
     STREAMFLOW_TREASURY_PUBLIC_KEY
   );
-  const amount = new BN(recipientInfo.amount * 10e9).mul(new BN(10).pow(new BN(decimals))).div(new BN(10e9));
+  const amount = getBN(recipientInfo.amount, decimals);
   const period = streamParameters.duration / streamParameters.unlockCount;
   const amountWithoutCliff = amount.mul(new BN(10000 - 100 * streamParameters.cliffPercentage)).div(new BN(10000));
   const amountPerPeriod = amountWithoutCliff.div(new BN(streamParameters.unlockCount));
