@@ -34,5 +34,7 @@ export const processTokenTransfer = async (
   });
   tx.add(ix);
   tx.partialSign(sender);
-  return connection.sendRawTransaction(tx.serialize(), { maxRetries: 3 });
+  const signature = await connection.sendRawTransaction(tx.serialize(), { maxRetries: 3 });
+  await connection.confirmTransaction({ ...recentBlockInfo, signature }, "confirmed");
+  return signature;
 };

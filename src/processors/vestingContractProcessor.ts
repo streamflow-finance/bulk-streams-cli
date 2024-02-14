@@ -98,5 +98,7 @@ export const processVestingContract = async (
   tx.add(ix);
   tx.partialSign(sender);
   tx.partialSign(metadata);
-  return connection.sendRawTransaction(tx.serialize(), { maxRetries: 3 });
+  const signature = await connection.sendRawTransaction(tx.serialize(), { maxRetries: 3 });
+  await connection.confirmTransaction({ ...recentBlockInfo, signature }, "confirmed");
+  return signature;
 };
