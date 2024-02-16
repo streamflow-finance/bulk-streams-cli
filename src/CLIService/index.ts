@@ -57,7 +57,6 @@ export class CLIService<TOptions extends Record<string, unknown>> {
   }
 
   public async specifyOption(key: keyof TOptions, request: string, options: IInquirerOption[]) {
-    console.log(options);
     this.options[key] = (
       options
         ? await prompt<{ result: unknown }>([
