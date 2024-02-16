@@ -1,9 +1,10 @@
+import select from "@inquirer/select";
 import chalk from "chalk";
 import { Command } from "commander";
 import figlet from "figlet";
-import { IInquirerOption, IOptionConfig } from "./types";
 import inquirer from "inquirer";
-import select from "@inquirer/select";
+
+import { IInquirerOption, IOptionConfig } from "./types";
 
 // Singleton to handle CLI interactions
 export class CLIService<TOptions extends Record<string, unknown>> {
@@ -27,7 +28,7 @@ export class CLIService<TOptions extends Record<string, unknown>> {
       this.program.option(
         `-${option.letter}, --${option.key as string}${option.valueType ? ` <${option.valueType}>` : ""}`,
         option.description,
-        option.default
+        option.default,
       );
     });
 
@@ -37,14 +38,14 @@ export class CLIService<TOptions extends Record<string, unknown>> {
 
     // Inquire missing options
     const missingOptions = this.optionConfigurations.filter(
-      (optionConfig) => !this.options[optionConfig.key] && !!optionConfig.valueType
+      (optionConfig) => !this.options[optionConfig.key] && !!optionConfig.valueType,
     );
     const inquiredOptions = await inquirer.prompt(
       missingOptions.map((optionConfig) => ({
         type: "input",
         name: optionConfig.key,
         message: optionConfig.request,
-      }))
+      })),
     );
     this.options = {
       ...this.options,

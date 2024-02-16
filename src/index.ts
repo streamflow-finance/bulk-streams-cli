@@ -1,14 +1,16 @@
+import { Wallet } from "@project-serum/anchor";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import chalk from "chalk";
+import EventEmitter from "events";
 import fs from "fs";
 import path from "path";
-import { Connection, Keypair, PublicKey } from "@solana/web3.js";
-import { Wallet } from "@project-serum/anchor";
-import { CLIService } from "./CLIService";
-import { ICLIOptions, cliOptions } from "./config";
-import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoices } from "./utils/tokens";
-import { IRecipientInfo, createRecipientStream } from "./utils/recipientStream";
-import { RecipientProgress } from "./utils/progress";
 import { Transform } from "stream";
+
+import { CLIService } from "./CLIService";
+import { getStreamParameters } from "./CLIService/streamParameters";
+import { ICLIOptions, cliOptions } from "./config";
 import { processTokenTransfer } from "./processors/tokenTransferProcessor";
+import { processVestingContract } from "./processors/vestingContractProcessor";
 import {
   createErrorFileStream,
   createErrorStream,
@@ -17,10 +19,9 @@ import {
   createSuccessFileStream,
   createSuccessStream,
 } from "./utils/outputStream";
-import chalk from "chalk";
-import EventEmitter from "events";
-import { getStreamParameters } from "./CLIService/streamParameters";
-import { processVestingContract } from "./processors/vestingContractProcessor";
+import { RecipientProgress } from "./utils/progress";
+import { IRecipientInfo, createRecipientStream } from "./utils/recipientStream";
+import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoices } from "./utils/tokens";
 
 (async () => {
   const cli = new CLIService<ICLIOptions>(cliOptions);
@@ -94,7 +95,7 @@ import { processVestingContract } from "./processors/vestingContractProcessor";
             row,
             mint,
             decimals,
-            vestingContractParameters!
+            vestingContractParameters!,
           )
         : await processTokenTransfer(connection, keypair, row, mint, decimals);
 
@@ -123,8 +124,8 @@ import { processVestingContract } from "./processors/vestingContractProcessor";
       if (errorCounter)
         console.log(
           chalk.yellow(
-            `${errorCounter} Transfers have failed, you can retry transfers by reusing error.csv output file!`
-          )
+            `${errorCounter} Transfers have failed, you can retry transfers by reusing error.csv output file!`,
+          ),
         );
       if (invalidCounter) console.log(chalk.red(`There were ${invalidCounter} invalid rows in the provided file!`));
 

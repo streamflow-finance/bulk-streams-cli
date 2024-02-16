@@ -6,6 +6,7 @@ import {
 import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
 import { getBN } from "@streamflow/stream";
 import BN from "bn.js";
+
 import { IRecipientInfo } from "../utils/recipientStream";
 
 export const processTokenTransfer = async (
@@ -13,7 +14,7 @@ export const processTokenTransfer = async (
   sender: Keypair,
   recipientInfo: IRecipientInfo,
   mint: PublicKey,
-  decimals: number
+  decimals: number,
 ): Promise<string> => {
   const recentBlockInfo = await connection.getLatestBlockhash();
   const recipientAta = await getOrCreateAssociatedTokenAccount(connection, sender, mint, recipientInfo.address);
@@ -26,7 +27,7 @@ export const processTokenTransfer = async (
     recipientAta.address,
     sender.publicKey,
     BigInt(amount),
-    decimals
+    decimals,
   );
   const tx = new Transaction({
     feePayer: sender.publicKey,

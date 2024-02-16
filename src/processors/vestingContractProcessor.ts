@@ -1,15 +1,16 @@
-import { Connection, Keypair, PublicKey, SYSVAR_RENT_PUBKEY, SystemProgram, Transaction } from "@solana/web3.js";
-import { StreamflowSolana, getBN } from "@streamflow/stream";
-import { IRecipientInfo } from "../utils/recipientStream";
-import { ICluster } from "@streamflow/stream/dist/common/types";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   getAssociatedTokenAddress,
   getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
+import { Connection, Keypair, PublicKey, SYSVAR_RENT_PUBKEY, SystemProgram, Transaction } from "@solana/web3.js";
+import { StreamflowSolana, getBN } from "@streamflow/stream";
+import { ICluster } from "@streamflow/stream/dist/common/types";
 import BN from "bn.js";
+
 import { ICLIStreamParameters } from "../CLIService/streamParameters";
+import { IRecipientInfo } from "../utils/recipientStream";
 
 const { PROGRAM_ID, STREAMFLOW_TREASURY_PUBLIC_KEY, FEE_ORACLE_PUBLIC_KEY, WITHDRAWOR_PUBLIC_KEY } =
   StreamflowSolana.constants;
@@ -22,7 +23,7 @@ export const processVestingContract = async (
   recipientInfo: IRecipientInfo,
   mint: PublicKey,
   decimals: number,
-  streamParameters: ICLIStreamParameters
+  streamParameters: ICLIStreamParameters,
 ): Promise<string> => {
   const programId = PROGRAM_ID[useDevnet ? ICluster.Devnet : ICluster.Mainnet];
   const pid = new PublicKey(programId);
@@ -35,7 +36,7 @@ export const processVestingContract = async (
     connection,
     sender,
     mint,
-    STREAMFLOW_TREASURY_PUBLIC_KEY
+    STREAMFLOW_TREASURY_PUBLIC_KEY,
   );
   const amount = getBN(recipientInfo.amount, decimals);
   const period = streamParameters.duration / streamParameters.unlockCount;
@@ -86,7 +87,7 @@ export const processVestingContract = async (
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       withdrawor: WITHDRAWOR_PUBLIC_KEY,
       systemProgram: SystemProgram.programId,
-    }
+    },
   );
 
   const recentBlockInfo = await connection.getLatestBlockhash();

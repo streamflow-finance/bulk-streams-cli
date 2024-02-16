@@ -1,6 +1,7 @@
-import inquirer from "inquirer";
-import { promptDateTime, promtTimePeriod } from "./date";
 import multiselect from "@inquirer/checkbox";
+import inquirer from "inquirer";
+
+import { promptDateTime, promtTimePeriod } from "./date";
 
 export interface ICLIStreamParameters {
   start: number;
