@@ -5,7 +5,6 @@ import {
 } from "@solana/spl-token";
 import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
 import { getBN } from "@streamflow/stream";
-import BN from "bn.js";
 
 import { IRecipientInfo } from "../utils/recipientStream";
 

@@ -1,4 +1,4 @@
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, mintTo } from "@solana/spl-token";
 import { TokenInfo, TokenListProvider } from "@solana/spl-token-registry";
 import { Connection, ParsedAccountData, PublicKey } from "@solana/web3.js";
 
@@ -29,8 +29,8 @@ export const prepareUserChoices = (
     const mintStr = tokenAcc.mint.toBase58();
     const name = tokenMetaMap.get(mintStr)?.name;
     return {
-      value: mintStr,
-      name: `${mintStr} [Balance: ${tokenAcc.uiAmount}]${name ? ` [Name: ${name}]` : ""}`,
+      message: `${mintStr} [Balance: ${tokenAcc.uiAmount}]${name ? ` [Name: ${name}]` : ""}`,
+      name: mintStr,
     };
   });
 

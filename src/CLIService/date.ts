@@ -1,9 +1,8 @@
-import select from "@inquirer/select";
-import inquirer from "inquirer";
+import { prompt } from "enquirer";
 
 // Prompts a date and returns it in unix seconds
 export const promptDate = async (request: string) => {
-  const { rawDate } = await inquirer.prompt([
+  const { rawDate } = await prompt<{ rawDate: string }>([
     {
       type: "input",
       name: "rawDate",
@@ -17,7 +16,7 @@ export const promptDate = async (request: string) => {
 };
 
 export const promptTime = async (request: string) => {
-  const { rawTime } = await inquirer.prompt([
+  const { rawTime } = await prompt<{ rawTime: string }>([
     {
       type: "input",
       name: "rawTime",
@@ -41,42 +40,46 @@ export const promptDateTime = async (field: string, note?: string) => {
 
 const timePeriods = [
   {
-    name: "Second",
-    value: 1,
+    message: "Second",
+    name: 1,
   },
   {
-    name: "Minute",
-    value: 60,
+    message: "Minute",
+    name: 60,
   },
   {
-    name: "Hour",
-    value: 60 * 60,
+    message: "Hour",
+    name: 60 * 60,
   },
   {
-    name: "Day",
-    value: 60 * 60 * 24,
+    message: "Day",
+    name: 60 * 60 * 24,
   },
   {
-    name: "Week",
-    value: 60 * 60 * 24 * 7,
+    message: "Week",
+    name: 60 * 60 * 24 * 7,
   },
   {
-    name: "Month",
-    value: 60 * 60 * 24 * 30,
+    message: "Month",
+    name: 60 * 60 * 24 * 30,
   },
   {
-    name: "Year",
-    value: 60 * 60 * 24 * 365,
+    message: "Year",
+    name: 60 * 60 * 24 * 365,
   },
 ];
 
 export const promtTimePeriod = async (field: string): Promise<number> => {
-  const period = await select({
+  // because of https://github.com/enquirer/enquirer/issues/405
+  // @ts-expect-error
+  const { period } = await prompt<{ period: number }>({
+    type: "select",
+    name: "period",
     message: `Please enter ${field} unit`,
     choices: timePeriods,
   });
-  const periodName = timePeriods.find((timePeriod) => timePeriod.value === period)?.name;
-  const { value } = await inquirer.prompt([
+  const periodName = timePeriods.find((timePeriod) => timePeriod.name === period)?.name;
+  const { value } = await prompt<{ value: string }>([
     {
       type: "input",
       name: "value",

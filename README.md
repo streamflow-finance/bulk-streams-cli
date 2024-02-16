@@ -12,10 +12,6 @@ Interactive CLI tool to create a large number of transfers or vesting contracts 
 2. Run `npm install`
 3. Run `npm start -- [options]`
 
-## Known Issues
-
-- we do not recommend to use this package on Windows as it has numerous issues working with interactive command-line tools
-
 ### Token transfers
 
 To make simple token transfers, just run `npm start` and follow the interactive commands.
