@@ -1,9 +1,9 @@
 import chalk from "chalk";
 import { Command } from "commander";
+import { prompt } from "enquirer";
 import figlet from "figlet";
+
 import { IInquirerOption, IOptionConfig } from "./types";
-import inquirer from "inquirer";
-import select from "@inquirer/select";
 
 // Singleton to handle CLI interactions
 export class CLIService<TOptions extends Record<string, unknown>> {
@@ -27,7 +27,7 @@ export class CLIService<TOptions extends Record<string, unknown>> {
       this.program.option(
         `-${option.letter}, --${option.key as string}${option.valueType ? ` <${option.valueType}>` : ""}`,
         option.description,
-        option.default
+        option.default,
       );
     });
 
@@ -37,14 +37,14 @@ export class CLIService<TOptions extends Record<string, unknown>> {
 
     // Inquire missing options
     const missingOptions = this.optionConfigurations.filter(
-      (optionConfig) => !this.options[optionConfig.key] && !!optionConfig.valueType
+      (optionConfig) => !this.options[optionConfig.key] && !!optionConfig.valueType,
     );
-    const inquiredOptions = await inquirer.prompt(
+    const inquiredOptions = await prompt(
       missingOptions.map((optionConfig) => ({
         type: "input",
-        name: optionConfig.key,
+        name: optionConfig.key as string,
         message: optionConfig.request,
-      }))
+      })),
     );
     this.options = {
       ...this.options,
@@ -56,21 +56,25 @@ export class CLIService<TOptions extends Record<string, unknown>> {
     return this.options as TOptions;
   }
 
-  public async specifyOption(key: keyof TOptions, request: string, options?: IInquirerOption[]) {
-    this.options[key] = options
-      ? ((await select({
-          message: request,
-          choices: options,
-        })) as TOptions[keyof TOptions])
-      : (
-          await inquirer.prompt([
+  public async specifyOption(key: keyof TOptions, request: string, options: IInquirerOption[]) {
+    this.options[key] = (
+      options
+        ? await prompt<{ result: unknown }>([
+            {
+              type: "select",
+              name: "result",
+              message: request,
+              choices: options,
+            },
+          ])
+        : await prompt<{ result: unknown }>([
             {
               type: "input",
-              name: key,
+              name: "result",
               message: request,
             },
           ])
-        )[key];
+    ).result as TOptions[keyof TOptions];
   }
 
   public error(message: string): void {

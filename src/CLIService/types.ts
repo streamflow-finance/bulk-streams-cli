@@ -8,6 +8,6 @@ export interface IOptionConfig<TOptions extends Record<string, unknown>> {
 }
 
 export interface IInquirerOption {
+  message: string;
   name: string;
-  value: string;
 }

@@ -5,7 +5,7 @@ import {
 } from "@solana/spl-token";
 import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
 import { getBN } from "@streamflow/stream";
-import BN from "bn.js";
+
 import { IRecipientInfo } from "../utils/recipientStream";
 
 export const processTokenTransfer = async (
@@ -13,7 +13,7 @@ export const processTokenTransfer = async (
   sender: Keypair,
   recipientInfo: IRecipientInfo,
   mint: PublicKey,
-  decimals: number
+  decimals: number,
 ): Promise<string> => {
   const recentBlockInfo = await connection.getLatestBlockhash();
   const recipientAta = await getOrCreateAssociatedTokenAccount(connection, sender, mint, recipientInfo.address);
@@ -26,7 +26,7 @@ export const processTokenTransfer = async (
     recipientAta.address,
     sender.publicKey,
     BigInt(amount),
-    decimals
+    decimals,
   );
   const tx = new Transaction({
     feePayer: sender.publicKey,
@@ -35,6 +35,9 @@ export const processTokenTransfer = async (
   tx.add(ix);
   tx.partialSign(sender);
   const signature = await connection.sendRawTransaction(tx.serialize(), { maxRetries: 3 });
-  await connection.confirmTransaction({ ...recentBlockInfo, signature }, "confirmed");
+  const res = await connection.confirmTransaction({ ...recentBlockInfo, signature }, "confirmed");
+  if (res.value.err) {
+    throw new Error(res.value.err.toString());
+  }
   return signature;
 };

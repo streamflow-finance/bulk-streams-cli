@@ -4,7 +4,9 @@ export class RecipientProgress {
   private progress: ProgressBar;
 
   constructor() {
-    this.progress = new ProgressBar("Processed: :current / Success :success / Errors: :retries / Invalid :invalid  ", { total: 1000000 });
+    this.progress = new ProgressBar("Processed: :current / Success :success / Errors: :retries / Invalid :invalid  ", {
+      total: 1000000,
+    });
 
     this.progress.tick(0, {
       success: 0,

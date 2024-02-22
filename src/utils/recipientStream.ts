@@ -1,9 +1,9 @@
-import path from "path";
-import fs from "fs";
-import { Throttle } from "stream-throttle";
-import { parse } from "csv-parse";
-import mapStream from "map-stream";
 import { PublicKey } from "@solana/web3.js";
+import { parse } from "csv-parse";
+import fs from "fs";
+import mapStream from "map-stream";
+import path from "path";
+import { Throttle } from "stream-throttle";
 
 export interface IRecipientInfo {
   amount: number;
@@ -31,7 +31,6 @@ const csvTransformer = mapStream<string[], IRecipientInfo>((data, callback) => {
     const name = data[2] ?? "";
     const email = data[3] ?? "";
 
-
     callback(null, {
       name,
       amount,
@@ -49,8 +48,8 @@ export const createRecipientStream = (filePath: string, rate = 500) => {
   const formattedPath = path.isAbsolute(filePath) ? filePath : path.join(process.cwd(), filePath);
 
   return fs
-  .createReadStream(formattedPath, "utf-8")
-  .pipe(new Throttle({ rate }))
-  .pipe(parse({ delimiter: ",", relax_column_count: true, skip_empty_lines: true, from_line: 2 }))
-  .pipe(csvTransformer);
+    .createReadStream(formattedPath, "utf-8")
+    .pipe(new Throttle({ rate }))
+    .pipe(parse({ delimiter: ",", relax_column_count: true, skip_empty_lines: true, from_line: 2 }))
+    .pipe(csvTransformer);
 };
