@@ -37,7 +37,7 @@ export class CLIService<TOptions extends Record<string, unknown>> {
 
     // Inquire missing options
     const missingOptions = this.optionConfigurations.filter(
-      (optionConfig) => !this.options[optionConfig.key] && !!optionConfig.valueType,
+      (optionConfig) => !this.options[optionConfig.key] && optionConfig.request,
     );
     const inquiredOptions = await prompt(
       missingOptions.map((optionConfig) => ({
@@ -60,20 +60,20 @@ export class CLIService<TOptions extends Record<string, unknown>> {
     this.options[key] = (
       options
         ? await prompt<{ result: unknown }>([
-            {
-              type: "select",
-              name: "result",
-              message: request,
-              choices: options,
-            },
-          ])
+          {
+            type: "select",
+            name: "result",
+            message: request,
+            choices: options,
+          },
+        ])
         : await prompt<{ result: unknown }>([
-            {
-              type: "input",
-              name: "result",
-              message: request,
-            },
-          ])
+          {
+            type: "input",
+            name: "result",
+            message: request,
+          },
+        ])
     ).result as TOptions[keyof TOptions];
   }
 

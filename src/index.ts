@@ -57,6 +57,8 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
   const isVestingContract = cli.getOptions().vesting;
   const useDevnet = cli.getOptions().devnet;
   const vestingContractParameters = isVestingContract ? await getStreamParameters() : null;
+  const priorityFee = cli.getOptions().priorityFee;
+  const computePrice = priorityFee ? parseInt(priorityFee) : undefined;
 
   const progress = new RecipientProgress();
 
@@ -89,15 +91,16 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
     try {
       const txId = isVestingContract
         ? await processVestingContract(
-            connection,
-            !!useDevnet,
-            keypair,
-            row,
-            mint,
-            decimals,
-            vestingContractParameters!,
-          )
-        : await processTokenTransfer(connection, keypair, row, mint, decimals);
+          connection,
+          !!useDevnet,
+          keypair,
+          row,
+          mint,
+          decimals,
+          vestingContractParameters!,
+          computePrice,
+        )
+        : await processTokenTransfer(connection, keypair, row, mint, decimals, computePrice);
 
       successStream.write([row.amount, row.address.toBase58(), row.name, row.email, txId]);
       progress.success();

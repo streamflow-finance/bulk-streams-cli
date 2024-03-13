@@ -3,7 +3,7 @@ import {
   getAssociatedTokenAddress,
   getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
-import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
+import { ComputeBudgetProgram, Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
 import { getBN } from "@streamflow/stream";
 
 import { IRecipientInfo } from "../utils/recipientStream";
@@ -14,6 +14,7 @@ export const processTokenTransfer = async (
   recipientInfo: IRecipientInfo,
   mint: PublicKey,
   decimals: number,
+  computePrice?: number,
 ): Promise<string> => {
   const recentBlockInfo = await connection.getLatestBlockhash();
   const recipientAta = await getOrCreateAssociatedTokenAccount(connection, sender, mint, recipientInfo.address);
@@ -32,6 +33,9 @@ export const processTokenTransfer = async (
     feePayer: sender.publicKey,
     ...recentBlockInfo,
   });
+  if (computePrice) {
+    tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: computePrice }));
+  }
   tx.add(ix);
   tx.partialSign(sender);
   const signature = await connection.sendRawTransaction(tx.serialize(), { maxRetries: 3 });

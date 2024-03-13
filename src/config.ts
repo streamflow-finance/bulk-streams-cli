@@ -28,7 +28,7 @@ export const cliOptions: IOptionConfig<ICLIOptions>[] = [
   {
     letter: "r",
     key: "rpc",
-    valueType: "rpcURL",
+    valueType: "rpc_url",
     description: `RPC endpoint.`,
     request: "Please specify RPC endpoint.",
     default: defaultRPC,
@@ -40,6 +40,13 @@ export const cliOptions: IOptionConfig<ICLIOptions>[] = [
     description: `Data processing rate, use higher value for faster RPC nodes.`,
     request: "Please specify data processing rate.",
     default: defaultSpeed,
+  },
+  {
+    letter: "p",
+    key: "priority-fee",
+    valueType: "fee",
+    description: `Priority Fee to use, price per CU in micro-lamports https://solana.com/developers/guides/advanced/how-to-use-priority-fees#what-are-priority-fees`,
+    request: "",
   },
   {
     letter: "v",

@@ -4,8 +4,8 @@ import {
   getAssociatedTokenAddress,
   getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
-import { Connection, Keypair, PublicKey, SYSVAR_RENT_PUBKEY, SystemProgram, Transaction } from "@solana/web3.js";
-import { StreamflowSolana, getBN } from "@streamflow/stream";
+import { ComputeBudgetProgram, Connection, Keypair, PublicKey, SYSVAR_RENT_PUBKEY, SystemProgram, Transaction } from "@solana/web3.js";
+import { StreamflowSolana, getBN, } from "@streamflow/stream";
 import { ICluster } from "@streamflow/stream/dist/common/types";
 import BN from "bn.js";
 
@@ -24,6 +24,7 @@ export const processVestingContract = async (
   mint: PublicKey,
   decimals: number,
   streamParameters: ICLIStreamParameters,
+  computePrice?: number,
 ): Promise<string> => {
   const programId = PROGRAM_ID[useDevnet ? ICluster.Devnet : ICluster.Mainnet];
   const pid = new PublicKey(programId);
@@ -96,6 +97,9 @@ export const processVestingContract = async (
     feePayer: sender.publicKey,
     ...recentBlockInfo,
   });
+  if (computePrice) {
+    tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: computePrice }));
+  }
   tx.add(ix);
   tx.partialSign(sender);
   tx.partialSign(metadata);
