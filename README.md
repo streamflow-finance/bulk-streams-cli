@@ -38,6 +38,16 @@ Script will create 3 output filed.
 Creating Vesting contracts are the same, just pass the `-v or --vesting` flag alongside with other parameters.
 NOTE: Vesting contracts doesn't have non-interactive mode yet. So you have to set up vesting contract parameters interactively. All other parameters are still valid for vesting contracts. (E.g. speed, rpc, recipients file etc.)
 
+### Priority Fees
+
+Solana network may be congested, so using just base fee may not be enough to process transaction at times. In this case we recommend to use Priority Fees https://solana.com/developers/guides/advanced/how-to-use-priority-fees.
+
+You can use `-p` parameter to pass custom priority fee that will be set for each transaction. Fee is set per computational unit in micro-lamports, by default transaction requests 200000 CU. For example, if you set `-p` value to 50000 it would mean that cumulative price per transaction will be `0.000001 SOL` (+ base fee which is fixed to `0.000005 SOL` currently).
+
+```
+(5000 / 10^6) * 200000 / 10^9
+```
+
 ### Technical
 
 Major tools used.
