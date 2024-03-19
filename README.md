@@ -38,6 +38,10 @@ Script will create 3 output filed.
 Creating Vesting contracts are the same, just pass the `-v or --vesting` flag alongside with other parameters.
 NOTE: Vesting contracts doesn't have non-interactive mode yet. So you have to set up vesting contract parameters interactively. All other parameters are still valid for vesting contracts. (E.g. speed, rpc, recipients file etc.)
 
+#### Program ID
+
+You can set custom program id with `-i` or `--program-id` parameter, use it only if you need to use non-standard Streamflow deployment.
+
 ### Priority Fees
 
 Solana network may be congested, so using just base fee may not be enough to process transaction at times. In this case we recommend to use Priority Fees https://solana.com/developers/guides/advanced/how-to-use-priority-fees.
