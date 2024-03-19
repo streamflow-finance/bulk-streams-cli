@@ -19,6 +19,7 @@ const { createStreamInstruction } = StreamflowSolana;
 export const processVestingContract = async (
   connection: Connection,
   useDevnet: boolean,
+  programId: string | null,
   sender: Keypair,
   recipientInfo: IRecipientInfo,
   mint: PublicKey,
@@ -26,7 +27,9 @@ export const processVestingContract = async (
   streamParameters: ICLIStreamParameters,
   computePrice?: number,
 ): Promise<string> => {
-  const programId = PROGRAM_ID[useDevnet ? ICluster.Devnet : ICluster.Mainnet];
+  if (!programId) {
+    programId = PROGRAM_ID[useDevnet ? ICluster.Devnet : ICluster.Mainnet];
+  }
   const pid = new PublicKey(programId);
   const metadata = Keypair.generate();
   const [escrowTokens] = await PublicKey.findProgramAddress([Buffer.from("strm"), metadata.publicKey.toBuffer()], pid);

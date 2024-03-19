@@ -58,6 +58,7 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
   const useDevnet = cli.getOptions().devnet;
   const vestingContractParameters = isVestingContract ? await getStreamParameters() : null;
   const priorityFee = cli.getOptions().priorityFee;
+  const programId = cli.getOptions().programId;
   const computePrice = priorityFee ? parseInt(priorityFee) : undefined;
 
   const progress = new RecipientProgress();
@@ -93,6 +94,7 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
         ? await processVestingContract(
           connection,
           !!useDevnet,
+          programId,
           keypair,
           row,
           mint,

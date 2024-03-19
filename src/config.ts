@@ -34,6 +34,13 @@ export const cliOptions: IOptionConfig<ICLIOptions>[] = [
     default: defaultRPC,
   },
   {
+    letter: "i",
+    key: "program-id",
+    valueType: "address",
+    description: `Streamflow Program ID to use.`,
+    request: "",
+  },
+  {
     letter: "s",
     key: "speed",
     valueType: "processing_rate",
