@@ -78,7 +78,7 @@ export const promtTimePeriod = async (field: string): Promise<number> => {
     message: `Please enter ${field} unit`,
     choices: timePeriods,
   });
-  const periodName = timePeriods.find((timePeriod) => timePeriod.name === period)?.name;
+  const periodName = timePeriods.find((timePeriod) => timePeriod.name === period)?.message;
   const { value } = await prompt<{ value: string }>([
     {
       type: "input",

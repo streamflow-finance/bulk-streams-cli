@@ -1,5 +1,5 @@
 {
-  "name": "token-auto-seller",
+  "name": "bulk-streams-cli",
   "version": "1.0.0",
   "description": "CLI tool that can load a file and create big number of streams (3000+)",
   "main": "index.js",
