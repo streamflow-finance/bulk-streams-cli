@@ -65,7 +65,7 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
 
   const recipientStream: Transform = createRecipientStream(recipientsPath, rate);
   let successCounter = 0;
-  const successStream = createSuccessStream();
+  const successStream = createSuccessStream(!!isVestingContract);
   successStream.pipe(createSuccessFileStream());
   let invalidCounter = 0;
   const invalidStream = createInvalidStream();
@@ -90,8 +90,9 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
     }
 
     try {
-      const txId = isVestingContract
-        ? await processVestingContract(
+
+      if (isVestingContract) {
+        const { txId, contractId } = await processVestingContract(
           connection,
           !!useDevnet,
           programId,
@@ -102,9 +103,11 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
           vestingContractParameters!,
           computePrice,
         )
-        : await processTokenTransfer(connection, keypair, row, mint, decimals, computePrice);
-
-      successStream.write([row.amount, row.address.toBase58(), row.name, row.email, txId]);
+        successStream.write([row.amount, row.address.toBase58(), row.name, row.email, txId, contractId]);
+      } else {
+        const { txId } = await processTokenTransfer(connection, keypair, row, mint, decimals, computePrice);
+        successStream.write([row.amount, row.address.toBase58(), row.name, row.email, txId]);
+      }
       progress.success();
       successCounter++;
     } catch (e) {

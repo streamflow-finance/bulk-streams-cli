@@ -30,6 +30,7 @@ To achieve higher TX/s please pass faster RPC endpoint via `-r` flag and pass hi
 Script will create 3 output filed.
 
 1. Successful transfers with transaction hashes.
+   - if `vesting` was enabled, it will also output `ContractID` for each created contract after `TransactionID`
 2. Errored transactions. Errored file can be used as input for the next run to retry.
 3. Invalid rows that script wasn't able to parse.
 

@@ -15,7 +15,7 @@ export const processTokenTransfer = async (
   mint: PublicKey,
   decimals: number,
   computePrice?: number,
-): Promise<string> => {
+): Promise<{ txId: string }> => {
   const recentBlockInfo = await connection.getLatestBlockhash();
   const recipientAta = await getOrCreateAssociatedTokenAccount(connection, sender, mint, recipientInfo.address);
   const senderAta = await getAssociatedTokenAddress(mint, sender.publicKey);
@@ -43,5 +43,5 @@ export const processTokenTransfer = async (
   if (res.value.err) {
     throw new Error(res.value.err.toString());
   }
-  return signature;
+  return { txId: signature };
 };

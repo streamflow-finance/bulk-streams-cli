@@ -4,10 +4,10 @@ import path from "path";
 
 const ts = Date.now().toString();
 
-export const createSuccessStream = () =>
+export const createSuccessStream = (isVestingContract?: boolean) =>
   stringify({
     header: true,
-    columns: ["Amount", "Wallet Address", "Title", "Email", "TransactionID"],
+    columns: ["Amount", "Wallet Address", "Title", "Email", "TransactionID", ...(isVestingContract ? ["ContractID"] : [])],
   });
 
 export const createSuccessFileStream = () => {

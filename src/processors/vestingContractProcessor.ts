@@ -26,7 +26,7 @@ export const processVestingContract = async (
   decimals: number,
   streamParameters: ICLIStreamParameters,
   computePrice?: number,
-): Promise<string> => {
+): Promise<{ txId: string; contractId: string }> => {
   if (!programId) {
     programId = PROGRAM_ID[useDevnet ? ICluster.Devnet : ICluster.Mainnet];
   }
@@ -111,5 +111,5 @@ export const processVestingContract = async (
   if (res.value.err) {
     throw new Error(res.value.err.toString());
   }
-  return signature;
+  return { txId: signature, contractId: metadata.publicKey.toBase58() };
 };
