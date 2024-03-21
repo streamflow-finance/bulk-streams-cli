@@ -17,7 +17,7 @@ export const processTokenTransfer = async (
   computePrice?: number,
 ): Promise<{ txId: string }> => {
   const recentBlockInfo = await connection.getLatestBlockhash();
-  const recipientAta = await getOrCreateAssociatedTokenAccount(connection, sender, mint, recipientInfo.address, true, computePrice);
+  const recipientAta = await getOrCreateAssociatedTokenAccount({ connection, payer: sender, mint, owner: recipientInfo.address, allowOwnerOffCurve: true, computePrice });
   const senderAta = await getAssociatedTokenAddress(mint, sender.publicKey, true);
   const amount = getBN(recipientInfo.amount, decimals).toString();
 
