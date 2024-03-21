@@ -2,7 +2,6 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   getAssociatedTokenAddress,
-  getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
 import { ComputeBudgetProgram, Connection, Keypair, PublicKey, SYSVAR_RENT_PUBKEY, SystemProgram, Transaction } from "@solana/web3.js";
 import { StreamflowSolana, getBN, } from "@streamflow/stream";
@@ -11,6 +10,7 @@ import BN from "bn.js";
 
 import { ICLIStreamParameters } from "../CLIService/streamParameters";
 import { IRecipientInfo } from "../utils/recipientStream";
+import { getOrCreateAssociatedTokenAccount } from "../utils/spl";
 
 const { PROGRAM_ID, STREAMFLOW_TREASURY_PUBLIC_KEY, FEE_ORACLE_PUBLIC_KEY, WITHDRAWOR_PUBLIC_KEY } =
   StreamflowSolana.constants;
@@ -32,15 +32,17 @@ export const processVestingContract = async (
   }
   const pid = new PublicKey(programId);
   const metadata = Keypair.generate();
-  const [escrowTokens] = await PublicKey.findProgramAddress([Buffer.from("strm"), metadata.publicKey.toBuffer()], pid);
+  const [escrowTokens] = PublicKey.findProgramAddressSync([Buffer.from("strm"), metadata.publicKey.toBuffer()], pid);
 
-  const senderTokens = await getAssociatedTokenAddress(mint, sender.publicKey);
-  const recipientTokens = await getOrCreateAssociatedTokenAccount(connection, sender, mint, recipientInfo.address);
+  const senderTokens = await getAssociatedTokenAddress(mint, sender.publicKey, true);
+  const recipientTokens = await getOrCreateAssociatedTokenAccount(connection, sender, mint, recipientInfo.address, true, computePrice);
   const streamflowTreasuryTokens = await getOrCreateAssociatedTokenAccount(
     connection,
     sender,
     mint,
     STREAMFLOW_TREASURY_PUBLIC_KEY,
+    true,
+    computePrice,
   );
   const amount = getBN(recipientInfo.amount, decimals);
   const period = streamParameters.duration / streamParameters.unlockCount;

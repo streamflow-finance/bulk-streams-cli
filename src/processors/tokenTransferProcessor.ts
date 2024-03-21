@@ -1,12 +1,12 @@
 import {
   createTransferCheckedInstruction,
   getAssociatedTokenAddress,
-  getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
 import { ComputeBudgetProgram, Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
 import { getBN } from "@streamflow/stream";
 
 import { IRecipientInfo } from "../utils/recipientStream";
+import { getOrCreateAssociatedTokenAccount } from "../utils/spl";
 
 export const processTokenTransfer = async (
   connection: Connection,
@@ -17,8 +17,8 @@ export const processTokenTransfer = async (
   computePrice?: number,
 ): Promise<{ txId: string }> => {
   const recentBlockInfo = await connection.getLatestBlockhash();
-  const recipientAta = await getOrCreateAssociatedTokenAccount(connection, sender, mint, recipientInfo.address);
-  const senderAta = await getAssociatedTokenAddress(mint, sender.publicKey);
+  const recipientAta = await getOrCreateAssociatedTokenAccount(connection, sender, mint, recipientInfo.address, true, computePrice);
+  const senderAta = await getAssociatedTokenAddress(mint, sender.publicKey, true);
   const amount = getBN(recipientInfo.amount, decimals).toString();
 
   const ix = createTransferCheckedInstruction(
