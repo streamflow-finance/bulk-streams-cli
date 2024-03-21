@@ -10,7 +10,6 @@ import BN from "bn.js";
 
 import { ICLIStreamParameters } from "../CLIService/streamParameters";
 import { IRecipientInfo } from "../utils/recipientStream";
-import { getOrCreateAssociatedTokenAccount } from "../utils/spl";
 
 const { PROGRAM_ID, STREAMFLOW_TREASURY_PUBLIC_KEY, FEE_ORACLE_PUBLIC_KEY, WITHDRAWOR_PUBLIC_KEY } =
   StreamflowSolana.constants;
@@ -35,15 +34,8 @@ export const processVestingContract = async (
   const [escrowTokens] = PublicKey.findProgramAddressSync([Buffer.from("strm"), metadata.publicKey.toBuffer()], pid);
 
   const senderTokens = await getAssociatedTokenAddress(mint, sender.publicKey, true);
-  const recipientTokens = await getOrCreateAssociatedTokenAccount(connection, sender, mint, recipientInfo.address, true, computePrice);
-  const streamflowTreasuryTokens = await getOrCreateAssociatedTokenAccount(
-    connection,
-    sender,
-    mint,
-    STREAMFLOW_TREASURY_PUBLIC_KEY,
-    true,
-    computePrice,
-  );
+  const recipientTokens = await getAssociatedTokenAddress(mint, recipientInfo.address, true);
+  const streamflowTreasuryTokens = await getAssociatedTokenAddress(mint, STREAMFLOW_TREASURY_PUBLIC_KEY, true);
   const amount = getBN(recipientInfo.amount, decimals);
   const period = streamParameters.duration / streamParameters.unlockCount;
   const amountWithoutCliff = amount.mul(new BN(10000 - 100 * streamParameters.cliffPercentage)).div(new BN(10000));
@@ -80,9 +72,9 @@ export const processVestingContract = async (
       recipient: recipientInfo.address,
       metadata: metadata.publicKey,
       escrowTokens,
-      recipientTokens: recipientTokens.address,
+      recipientTokens,
       streamflowTreasury: STREAMFLOW_TREASURY_PUBLIC_KEY,
-      streamflowTreasuryTokens: streamflowTreasuryTokens.address,
+      streamflowTreasuryTokens,
       partner: sender.publicKey,
       partnerTokens: senderTokens,
       mint: new PublicKey(mint),
