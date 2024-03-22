@@ -2,7 +2,6 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   getAssociatedTokenAddress,
-  getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
 import { ComputeBudgetProgram, Connection, Keypair, PublicKey, SYSVAR_RENT_PUBKEY, SystemProgram, Transaction } from "@solana/web3.js";
 import { StreamflowSolana, getBN, } from "@streamflow/stream";
@@ -26,22 +25,17 @@ export const processVestingContract = async (
   decimals: number,
   streamParameters: ICLIStreamParameters,
   computePrice?: number,
-): Promise<string> => {
+): Promise<{ txId: string; contractId: string }> => {
   if (!programId) {
     programId = PROGRAM_ID[useDevnet ? ICluster.Devnet : ICluster.Mainnet];
   }
   const pid = new PublicKey(programId);
   const metadata = Keypair.generate();
-  const [escrowTokens] = await PublicKey.findProgramAddress([Buffer.from("strm"), metadata.publicKey.toBuffer()], pid);
+  const [escrowTokens] = PublicKey.findProgramAddressSync([Buffer.from("strm"), metadata.publicKey.toBuffer()], pid);
 
-  const senderTokens = await getAssociatedTokenAddress(mint, sender.publicKey);
-  const recipientTokens = await getOrCreateAssociatedTokenAccount(connection, sender, mint, recipientInfo.address);
-  const streamflowTreasuryTokens = await getOrCreateAssociatedTokenAccount(
-    connection,
-    sender,
-    mint,
-    STREAMFLOW_TREASURY_PUBLIC_KEY,
-  );
+  const senderTokens = await getAssociatedTokenAddress(mint, sender.publicKey, true);
+  const recipientTokens = await getAssociatedTokenAddress(mint, recipientInfo.address, true);
+  const streamflowTreasuryTokens = await getAssociatedTokenAddress(mint, STREAMFLOW_TREASURY_PUBLIC_KEY, true);
   const amount = getBN(recipientInfo.amount, decimals);
   const period = streamParameters.duration / streamParameters.unlockCount;
   const amountWithoutCliff = amount.mul(new BN(10000 - 100 * streamParameters.cliffPercentage)).div(new BN(10000));
@@ -78,9 +72,9 @@ export const processVestingContract = async (
       recipient: recipientInfo.address,
       metadata: metadata.publicKey,
       escrowTokens,
-      recipientTokens: recipientTokens.address,
+      recipientTokens,
       streamflowTreasury: STREAMFLOW_TREASURY_PUBLIC_KEY,
-      streamflowTreasuryTokens: streamflowTreasuryTokens.address,
+      streamflowTreasuryTokens,
       partner: sender.publicKey,
       partnerTokens: senderTokens,
       mint: new PublicKey(mint),
@@ -111,5 +105,5 @@ export const processVestingContract = async (
   if (res.value.err) {
     throw new Error(res.value.err.toString());
   }
-  return signature;
+  return { txId: signature, contractId: metadata.publicKey.toBase58() };
 };

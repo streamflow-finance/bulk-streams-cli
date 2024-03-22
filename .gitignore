@@ -1,5 +1,6 @@
 dist
 node_modules
 *.key
-local.csv
+local*.csv
 *-*.csv
+.idea
