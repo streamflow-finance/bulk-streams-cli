@@ -3,10 +3,11 @@ import {
   TOKEN_PROGRAM_ID,
   getAssociatedTokenAddress,
 } from "@solana/spl-token";
-import { ComputeBudgetProgram, Connection, Keypair, PublicKey, SYSVAR_RENT_PUBKEY, SystemProgram, Transaction } from "@solana/web3.js";
+import { ComputeBudgetProgram, Connection, Keypair, PublicKey, SYSVAR_RENT_PUBKEY, SystemProgram, Transaction, SendTransactionError } from "@solana/web3.js";
 import { StreamflowSolana, getBN, } from "@streamflow/stream";
 import { ICluster } from "@streamflow/stream/dist/common/types";
 import BN from "bn.js";
+import bs58 from "bs58";
 
 import { ICLIStreamParameters } from "../CLIService/streamParameters";
 import { IRecipientInfo } from "../utils/recipientStream";
@@ -100,7 +101,17 @@ export const processVestingContract = async (
   tx.add(ix);
   tx.partialSign(sender);
   tx.partialSign(metadata);
-  const signature = await connection.sendRawTransaction(tx.serialize(), { maxRetries: 3 });
+  let signature = bs58.encode(tx.signature!);
+  try {
+    signature = await connection.sendRawTransaction(tx.serialize(), { maxRetries: 3 });
+  } catch (err) {
+    if (err instanceof SendTransactionError && err.message.includes("Blockhash not found")) {
+      console.log(`\n${recipientInfo.address}: Got 'Blockhash not found', will validate the transaction landing in 3 seconds...`)
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    } else {
+      throw err;
+    }
+  }
   const res = await connection.confirmTransaction({
     blockhash: recentBlockInfo.blockhash,
     lastValidBlockHeight: recentBlockInfo.lastValidBlockHeight + 50,

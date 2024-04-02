@@ -113,7 +113,7 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
     } catch (e) {
       progress.retry();
       errorStream.write(row.rawData.split(","));
-      console.info(e);
+      console.info(`\n${row.address}: ${e}`);
       errorCounter++;
     }
     activeProcessing--;
