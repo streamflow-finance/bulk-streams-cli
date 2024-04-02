@@ -117,29 +117,25 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
       errorCounter++;
     }
     activeProcessing--;
-    processingEvent.emit("process_finished");
   });
 
-  // NOTE: before moving this to stream.on("end") callback,
-  // consider that stream end will be called much earlier then data is done processing
-  // hence this hacky way
-  processingEvent.on("process_finished", async () => {
-    // All the processing transfers are finished
-    if (processingStarted && activeProcessing === 0) {
-      progress.end();
-      console.log("CSV file has been processed!");
-      if (successCounter) console.log(chalk.green(`${successCounter} Transfers have been successful!`));
-      if (errorCounter)
-        console.log(
-          chalk.yellow(
-            `${errorCounter} Transfers have failed, you can retry transfers by reusing error.csv output file!`,
-          ),
-        );
-      if (invalidCounter) console.log(chalk.red(`There were ${invalidCounter} invalid rows in the provided file!`));
-
-      const endTime = process.hrtime(startTime);
-      const elapsedSeconds = (endTime[0] + endTime[1] / 1e9).toFixed(3);
-      console.log("It took " + elapsedSeconds + "seconds");
+  recipientStream.on("close", async () => {
+    while (processingStarted && activeProcessing > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
+    progress.end();
+    console.log("CSV file has been processed!");
+    if (successCounter) console.log(chalk.green(`${successCounter} Transfers have been successful!`));
+    if (errorCounter)
+      console.log(
+        chalk.yellow(
+          `${errorCounter} Transfers have failed, you can retry transfers by reusing error.csv output file!`,
+        ),
+      );
+    if (invalidCounter) console.log(chalk.red(`There were ${invalidCounter} invalid rows in the provided file!`));
+
+    const endTime = process.hrtime(startTime);
+    const elapsedSeconds = (endTime[0] + endTime[1] / 1e9).toFixed(3);
+    console.log("It took " + elapsedSeconds + "seconds");
   });
 })();
