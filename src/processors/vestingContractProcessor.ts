@@ -5,7 +5,7 @@ import {
 } from "@solana/spl-token";
 import { ComputeBudgetProgram, Connection, Keypair, PublicKey, SYSVAR_RENT_PUBKEY, SystemProgram, Transaction, SendTransactionError } from "@solana/web3.js";
 import { StreamflowSolana, getBN, } from "@streamflow/stream";
-import { ICluster } from "@streamflow/stream/dist/common/types";
+import { ICluster } from "@streamflow/common";
 import BN from "bn.js";
 import bs58 from "bs58";
 
