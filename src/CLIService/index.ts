@@ -57,6 +57,7 @@ export class CLIService<TOptions extends Record<string, unknown>> {
         type: "input",
         name: optionConfig.key as string,
         message: optionConfig.request,
+        initial: optionConfig.default,
       })),
     );
     this.options = {
