@@ -96,6 +96,7 @@ export const processVestingContract = async (
     feePayer: sender.publicKey,
     ...recentBlockInfo,
   });
+  tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 220_000 }));
   if (computePrice) {
     tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: computePrice }));
   }
