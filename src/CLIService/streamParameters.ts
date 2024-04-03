@@ -59,7 +59,7 @@ export const getStreamParameters = async (options: ICLIOptions): Promise<ICLIStr
     const { vestingOptions } = await prompt<{ vestingOptions: string[] }>({
       type: "multiselect",
       name: "vestingOptions",
-      message: "Vesting contract options",
+      message: "Vesting contract options (use `space` button to enable/disable)",
       initial: ["cancelableBySender", "transferableByRecipient"],
       // because of this bug https://github.com/enquirer/enquirer/issues/279#issuecomment-623461898
       // @ts-expect-error

@@ -7,7 +7,7 @@ export const promptDate = async (request: string) => {
     {
       type: "input",
       name: "rawDate",
-      message: `${request} (Format YYYY/MM/DD)`,
+      message: `${request} (Format YYYY/MM/DD, local timezone)`,
     },
   ]);
 
