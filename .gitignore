@@ -3,4 +3,6 @@ node_modules
 *.key
 local*.csv
 *-*.csv
+*_*.csv
 .idea
+.DS_Store

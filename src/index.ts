@@ -73,15 +73,15 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
     }
   }
 
-  const rate = parseInt(cli.getOptions().speed);
+  const rate = cli.getOptions().speed;
 
   // Processing vesting parameters
   const isVestingContract = cli.getOptions().vesting;
   const useDevnet = cli.getOptions().devnet;
-  const vestingContractParameters = isVestingContract ? await getStreamParameters() : null;
+  const vestingContractParameters = isVestingContract ? await getStreamParameters(cli.getOptions()) : null;
   const priorityFee = cli.getOptions().priorityFee;
   const programId = cli.getOptions().programId;
-  const computePrice = priorityFee ? parseInt(priorityFee) : undefined;
+  const computePrice = priorityFee;
 
   const progress = new RecipientProgress();
 

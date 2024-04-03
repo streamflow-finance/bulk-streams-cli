@@ -1,7 +1,11 @@
+import { InvalidArgumentError } from "commander";
 import { IOptionConfig } from "./CLIService/types";
+import { validateInteger, validateFloat } from "./utils/validators";
 
 const defaultRPC = "https://api.mainnet-beta.solana.com";
-const defaultSpeed = "100";
+const defaultSpeed = 100;
+const VESTING_OPTIONS = ["cancelableBySender", "cancelableByRecipient", "automaticWithdrawal", "transferableBySender", "transferableByRecipient", "canTopup"];
+const SEVENTY_YEARS_IN_SECS = 70 * 365 * 24 * 60 * 60;
 
 export const cliOptions: IOptionConfig<ICLIOptions>[] = [
   {
@@ -47,6 +51,7 @@ export const cliOptions: IOptionConfig<ICLIOptions>[] = [
     description: `Data processing rate, use higher value for faster RPC nodes.`,
     request: "Please specify data processing rate.",
     default: defaultSpeed,
+    callback: validateInteger,
   },
   {
     letter: "p",
@@ -54,12 +59,70 @@ export const cliOptions: IOptionConfig<ICLIOptions>[] = [
     valueType: "fee",
     description: `Priority Fee to use, price per CU in micro-lamports https://solana.com/developers/guides/advanced/how-to-use-priority-fees#what-are-priority-fees`,
     request: "",
+    callback: validateInteger,
   },
   {
     letter: "v",
     key: "vesting",
     description: `If the transfers should be Streamflow vesting contracts.`,
     request: "",
+  },
+  {
+    key: "vesting-start-ts",
+    valueType: "unixtimestamp",
+    description: "Start timestamp of vesting, in seconds",
+    request: "",
+    callback: (val) => {
+      const newVal = validateInteger(val);
+      const startTs = new Date().getTime() / 1000;
+      const endTs = startTs + SEVENTY_YEARS_IN_SECS; // protocol validation
+      if (newVal !== 0 && (newVal < startTs || newVal > endTs)) {
+        throw new InvalidArgumentError("Invalid start timestamp: should be more than now and less than 70 years in the future");
+      }
+      return newVal;
+    }
+  },
+  {
+    key: "vesting-unlock-period",
+    valueType: "unlock_period",
+    description: "Unlock period of vesting, in seconds",
+    request: "",
+    callback: validateInteger,
+  },
+  {
+    key: "vesting-duration",
+    valueType: "duration",
+    description: "How many Unlock Periods there should be",
+    request: "",
+    callback: validateInteger,
+  },
+  {
+    key: "vesting-unlock-count",
+    valueType: "unlock_count",
+    description: "Desired number of Unlocks, first unlock will be at start_ts + unlock_period",
+    request: "",
+    callback: validateInteger,
+  },
+  {
+    key: "vesting-cliff-percentage",
+    valueType: "cliff_percentage",
+    description: "Percentage of the amount that should be unlocked right at the start",
+    request: "",
+    callback: validateFloat,
+  },
+  {
+    key: "vesting-options",
+    valueType: "options",
+    description: `A Comma Separated list of options, pass an empty string to disable all options, available options are: ${VESTING_OPTIONS.join("\n")}`,
+    request: "",
+    callback: (val) => {
+      const values = val.split(",");
+      const extraOptions = values.filter((item) => !VESTING_OPTIONS.includes(item));
+      if (extraOptions.length > 0) {
+        throw new InvalidArgumentError(`Not allowed options: ${extraOptions.join(', ')}`);
+      }
+      return values;
+    }
   },
   {
     letter: "d",
@@ -69,10 +132,20 @@ export const cliOptions: IOptionConfig<ICLIOptions>[] = [
   },
 ];
 
-export interface ICLIOptions extends Record<string, string> {
+export interface ICLIOptions extends Record<string, any> {
   key: string;
   token: string;
   recipients: string;
   rpc: string;
-  speed: string;
+  programId: string;
+  speed: number;
+  priorityFee?: number;
+  vesting: boolean;
+  vestingStartTs?: number;
+  vestingUnlockPeriod?: number;
+  vestingDuration?: number;
+  vestingUnlockCount?: number;
+  vestingCliffPercentage?: number;
+  vestingOptions?: string[];
+  devnet: boolean;
 }

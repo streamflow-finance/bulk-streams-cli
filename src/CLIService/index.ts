@@ -24,16 +24,30 @@ export class CLIService<TOptions extends Record<string, unknown>> {
     this.program.version("1.0.0").description("A CLI tool to create Airdrops");
 
     this.optionConfigurations.forEach((option) => {
-      this.program.option(
-        `-${option.letter}, --${option.key as string}${option.valueType ? ` <${option.valueType}>` : ""}`,
+      const flags = [];
+      if (option.letter) {
+        flags.push(`-${option.letter}`)
+      }
+      flags.push(`--${option.key as string}`)
+      if (option.callback) {
+        return this.program.option(
+          `${flags.join(', ')} ${option.valueType ? ` <${option.valueType}>` : ""}`,
+          option.description,
+          option.callback,
+          option.default,
+        );
+      }
+      return this.program.option(
+        `${flags.join(', ')} ${option.valueType ? ` <${option.valueType}>` : ""}`,
         option.description,
-        option.default,
+        option.callback,
       );
     });
 
     this.program.parse();
 
     this.options = this.program.opts();
+    console.log(this.options);
 
     // Inquire missing options
     const missingOptions = this.optionConfigurations.filter(
