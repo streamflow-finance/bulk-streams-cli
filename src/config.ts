@@ -119,7 +119,7 @@ export const cliOptions: IOptionConfig<ICLIOptions>[] = [
       if (!val) {
         return [];
       }
-      const values = val.split(",");
+      const values = val.split(",").map((item) => item.trim());
       const extraOptions = values.filter((item) => !VESTING_OPTIONS.includes(item));
       if (extraOptions.length > 0) {
         throw new InvalidArgumentError(`Not allowed options: ${extraOptions.join(', ')}`);
