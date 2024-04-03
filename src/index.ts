@@ -146,7 +146,7 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
     progress.end();
-    fs.writeFileSync(recipientsPath, [[...columns, fileHash].join(","), recipientsFile.trim().split("\n").slice(1)].join("\n"))
+    fs.writeFileSync(recipientsPath, [[...columns, fileHash].join(","), ...csvContent].join("\n"))
     console.log("CSV file has been processed!");
     if (successCounter) console.log(chalk.green(`${successCounter} Transfers have been successful!`));
     if (errorCounter)
