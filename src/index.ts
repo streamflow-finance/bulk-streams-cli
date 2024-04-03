@@ -1,7 +1,8 @@
 import { Wallet } from "@project-serum/anchor";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import chalk from "chalk";
-import EventEmitter from "events";
+import { createHash } from "crypto";
+import { prompt } from "enquirer";
 import fs from "fs";
 import path from "path";
 import { Transform } from "stream";
@@ -51,6 +52,27 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
   const decimals = await getTokenDecimals(connection, mint);
 
   const recipientsPath = cli.getOptions().recipients;
+
+  const recipientsFile = fs.readFileSync(recipientsPath, "utf-8");
+  const columns = recipientsFile.trim().split("\n")[0].split(",");
+  const csvContent = recipientsFile.trim().split("\n").slice(1);
+  const lastColumn = columns.at(-1);
+  const isValidHash = /^[A-Fa-f0-9]{64}$/.test(lastColumn || '');
+  const fileHash = createHash("sha256").update(csvContent.join("\n")).digest("hex");
+
+  if (isValidHash) {
+    let msg: string;
+    if (lastColumn === fileHash) {
+      msg = 'This file has already been processed, are you sure you want to proceed?'
+    } else {
+      msg = 'It seems that this file has already been processed, but was modified afterwards. Are you sure you want to proceed?'
+    }
+    const res = await prompt<{ proceed: boolean }>({ name: 'proceed', type: 'toggle', enabled: 'Yes', disabled: 'No', message: msg })
+    if (!res.proceed) {
+      return;
+    }
+  }
+
   const rate = parseInt(cli.getOptions().speed);
 
   // Processing vesting parameters
@@ -77,7 +99,7 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
   const startTime = process.hrtime();
   let activeProcessing = 0;
   let processingStarted = false;
-  const processingEvent = new EventEmitter();
+
   recipientStream.on("data", async (row: IRecipientInfo) => {
     activeProcessing++;
     processingStarted = true;
@@ -124,6 +146,7 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
     progress.end();
+    fs.writeFileSync(recipientsPath, [[...columns, fileHash].join(","), recipientsFile.trim().split("\n").slice(1)].join("\n"))
     console.log("CSV file has been processed!");
     if (successCounter) console.log(chalk.green(`${successCounter} Transfers have been successful!`));
     if (errorCounter)
