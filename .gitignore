@@ -6,3 +6,4 @@ local*.csv
 *_*.csv
 .idea
 .DS_Store
+key.json

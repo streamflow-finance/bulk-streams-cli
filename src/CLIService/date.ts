@@ -70,7 +70,7 @@ const timePeriods = [
   },
 ];
 
-export const promtTimePeriod = async (field: string, period?: number, periodValue?: number): Promise<number> => {
+export const promptTimePeriod = async (field: string, period?: number, periodValue?: number): Promise<number> => {
   if (period === undefined) {
     // because of https://github.com/enquirer/enquirer/issues/405
     // @ts-expect-error

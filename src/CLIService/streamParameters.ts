@@ -1,6 +1,6 @@
 import { prompt } from "enquirer";
 
-import { promptDateTime, promtTimePeriod } from "./date";
+import { promptDateTime, promptTimePeriod } from "./date";
 import { ICLIOptions } from "../config";
 import { renderPromptValue } from "../utils/prompt";
 
@@ -28,7 +28,7 @@ export const getStreamParameters = async (options: ICLIOptions): Promise<ICLIStr
     start = options.vestingStartTs
     renderPromptValue('Start', start.toString())
   }
-  const duration = await promtTimePeriod("vesting duration", options.vestingDurationUnit, options.vestingDurationValue);
+  const duration = await promptTimePeriod("vesting duration", options.vestingDurationUnit, options.vestingDurationValue);
   if (options.vestingUnlockCount === undefined) {
     const { unlockCountStr } = await prompt<{ unlockCountStr: string }>([
       {
