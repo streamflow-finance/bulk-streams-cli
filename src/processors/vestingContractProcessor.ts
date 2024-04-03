@@ -28,7 +28,6 @@ export const processVestingContract = async (
   streamParameters: ICLIStreamParameters,
   computePrice?: number,
 ): Promise<{ txId: string; contractId: string }> => {
-  console.log(streamParameters);
   if (!programId) {
     programId = PROGRAM_ID[useDevnet ? ICluster.Devnet : ICluster.Mainnet];
   }

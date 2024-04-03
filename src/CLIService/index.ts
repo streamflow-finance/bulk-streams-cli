@@ -47,7 +47,6 @@ export class CLIService<TOptions extends Record<string, unknown>> {
     this.program.parse();
 
     this.options = this.program.opts();
-    console.log(this.options);
 
     // Inquire missing options
     const missingOptions = this.optionConfigurations.filter(

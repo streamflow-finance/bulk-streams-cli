@@ -17,9 +17,17 @@ export interface ICLIStreamParameters {
 }
 
 export const getStreamParameters = async (options: ICLIOptions): Promise<ICLIStreamParameters> => {
-  const start = options.vestingStartTs ?? await promptDateTime("start", "(leave empty to start immediately)");
-  const duration = options.vestingDuration ?? await promtTimePeriod("vesting duration");
+  let start: number;
   let unlockCount: number;
+  let cliffPercentage: number;
+  let vestingOptionsSet: Set<string>;
+  if (options.vestingStartTs === undefined) {
+    start = await promptDateTime("start", "(leave empty to start immediately)");
+  } else {
+    start = options.vestingStartTs
+    console.log(`Start: ${start}`)
+  }
+  const duration = await promtTimePeriod("vesting duration", options.vestingDurationUnit, options.vestingDurationValue);
   if (options.vestingUnlockCount === undefined) {
     const { unlockCountStr } = await prompt<{ unlockCountStr: string }>([
       {
@@ -30,9 +38,9 @@ export const getStreamParameters = async (options: ICLIOptions): Promise<ICLIStr
     ]);
     unlockCount = parseInt(unlockCountStr);
   } else {
-    unlockCount = options.vestingUnlockCount
+    unlockCount = options.vestingUnlockCount;
+    console.log(`Unlocks: ${unlockCount}`)
   }
-  let cliffPercentage: number;
   if (options.vestingCliffPercentage === undefined) {
     const { cliffPercentageStr } = await prompt<{ cliffPercentageStr: string }>([
       {
@@ -44,8 +52,8 @@ export const getStreamParameters = async (options: ICLIOptions): Promise<ICLIStr
     cliffPercentage = cliffPercentageStr ? parseFloat(cliffPercentageStr) : 0;
   } else {
     cliffPercentage = options.vestingCliffPercentage;
+    console.log(`Cliff: ${cliffPercentage}%`)
   }
-  let vestingOptionsSet: Set<string>;
   if (options.vestingOptions === undefined) {
     const { vestingOptions } = await prompt<{ vestingOptions: string[] }>({
       type: "multiselect",
@@ -84,6 +92,7 @@ export const getStreamParameters = async (options: ICLIOptions): Promise<ICLIStr
     vestingOptionsSet = new Set(vestingOptions);
   } else {
     vestingOptionsSet = new Set(options.vestingOptions);
+    console.log(`Vesting options: ${options.vestingOptions.join(', ')}`)
   }
 
   const cancelableBySender = vestingOptionsSet.has("cancelableBySender");

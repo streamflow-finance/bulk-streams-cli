@@ -83,6 +83,17 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
   const programId = cli.getOptions().programId;
   const computePrice = priorityFee;
 
+  const res = await prompt<{ proceed: boolean }>({
+    name: 'proceed',
+    type: 'toggle',
+    enabled: 'Yes',
+    disabled: 'No',
+    message: 'Are all these parameters correct? Pressing `Yes` will start the procedure.'
+  })
+  if (!res.proceed) {
+    return;
+  }
+
   const progress = new RecipientProgress();
 
   const recipientStream: Transform = createRecipientStream(recipientsPath, rate);

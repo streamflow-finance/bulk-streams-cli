@@ -83,16 +83,16 @@ export const cliOptions: IOptionConfig<ICLIOptions>[] = [
     }
   },
   {
-    key: "vesting-unlock-period",
-    valueType: "unlock_period",
-    description: "Unlock period of vesting, in seconds",
+    key: "vesting-duration-unit",
+    valueType: "duration_unit",
+    description: "Duration Unit of vesting, in seconds",
     request: "",
     callback: validateInteger,
   },
   {
-    key: "vesting-duration",
-    valueType: "duration",
-    description: "How many Unlock Periods there should be",
+    key: "vesting-duration-value",
+    valueType: "duration_value",
+    description: "For how many Duration Units vesting should last",
     request: "",
     callback: validateInteger,
   },
@@ -116,6 +116,9 @@ export const cliOptions: IOptionConfig<ICLIOptions>[] = [
     description: `A Comma Separated list of options, pass an empty string to disable all options, available options are: ${VESTING_OPTIONS.join("\n")}`,
     request: "",
     callback: (val) => {
+      if (!val) {
+        return [];
+      }
       const values = val.split(",");
       const extraOptions = values.filter((item) => !VESTING_OPTIONS.includes(item));
       if (extraOptions.length > 0) {
@@ -142,8 +145,8 @@ export interface ICLIOptions extends Record<string, any> {
   priorityFee?: number;
   vesting: boolean;
   vestingStartTs?: number;
-  vestingUnlockPeriod?: number;
-  vestingDuration?: number;
+  vestingDurationUnit?: number;
+  vestingDurationValue?: number;
   vestingUnlockCount?: number;
   vestingCliffPercentage?: number;
   vestingOptions?: string[];
