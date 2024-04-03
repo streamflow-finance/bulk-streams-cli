@@ -2,6 +2,7 @@ import { prompt } from "enquirer";
 
 import { promptDateTime, promtTimePeriod } from "./date";
 import { ICLIOptions } from "../config";
+import { renderPromptValue } from "../utils/prompt";
 
 export interface ICLIStreamParameters {
   start: number;
@@ -25,7 +26,7 @@ export const getStreamParameters = async (options: ICLIOptions): Promise<ICLIStr
     start = await promptDateTime("start", "(leave empty to start immediately)");
   } else {
     start = options.vestingStartTs
-    console.log(`Start: ${start}`)
+    renderPromptValue('Start', start.toString())
   }
   const duration = await promtTimePeriod("vesting duration", options.vestingDurationUnit, options.vestingDurationValue);
   if (options.vestingUnlockCount === undefined) {
@@ -39,7 +40,7 @@ export const getStreamParameters = async (options: ICLIOptions): Promise<ICLIStr
     unlockCount = parseInt(unlockCountStr);
   } else {
     unlockCount = options.vestingUnlockCount;
-    console.log(`Unlocks: ${unlockCount}`)
+    renderPromptValue('Unlocks', unlockCount.toString())
   }
   if (options.vestingCliffPercentage === undefined) {
     const { cliffPercentageStr } = await prompt<{ cliffPercentageStr: string }>([
@@ -52,7 +53,7 @@ export const getStreamParameters = async (options: ICLIOptions): Promise<ICLIStr
     cliffPercentage = cliffPercentageStr ? parseFloat(cliffPercentageStr) : 0;
   } else {
     cliffPercentage = options.vestingCliffPercentage;
-    console.log(`Cliff: ${cliffPercentage}%`)
+    renderPromptValue('Cliff', `${cliffPercentage}%`)
   }
   if (options.vestingOptions === undefined) {
     const { vestingOptions } = await prompt<{ vestingOptions: string[] }>({
@@ -92,7 +93,7 @@ export const getStreamParameters = async (options: ICLIOptions): Promise<ICLIStr
     vestingOptionsSet = new Set(vestingOptions);
   } else {
     vestingOptionsSet = new Set(options.vestingOptions);
-    console.log(`Vesting options: ${options.vestingOptions.join(', ')}`)
+    renderPromptValue('Vesting options', options.vestingOptions.join(', '))
   }
 
   const cancelableBySender = vestingOptionsSet.has("cancelableBySender");

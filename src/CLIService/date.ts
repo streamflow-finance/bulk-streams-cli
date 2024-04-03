@@ -1,5 +1,5 @@
-import { time } from "console";
 import { prompt } from "enquirer";
+import { renderPromptValue } from "../utils/prompt";
 
 // Prompts a date and returns it in unix seconds
 export const promptDate = async (request: string) => {
@@ -82,7 +82,7 @@ export const promtTimePeriod = async (field: string, period?: number, periodValu
     })).period;
   } else {
     const unitOption = timePeriods.filter((item) => item.name === period)[0];
-    console.log(`${field} unit: ${period} seconds (${unitOption ? unitOption.message : unitOption})`)
+    renderPromptValue(`${field} unit`, `${period}`, `seconds (${unitOption ? unitOption.message : unitOption})`)
   }
 
   const periodName = timePeriods.find((timePeriod) => timePeriod.name === period)?.message;
@@ -96,9 +96,8 @@ export const promtTimePeriod = async (field: string, period?: number, periodValu
     ]);
     periodValue = parseFloat(value);
   } else {
-    console.log(`${field} value: ${periodValue} (How many ${periodName}s)`)
+    renderPromptValue(`${field} value`, `${periodValue}`, `(How many ${periodName}s)`)
   }
-
 
   return Math.trunc(period * periodValue);
 };
