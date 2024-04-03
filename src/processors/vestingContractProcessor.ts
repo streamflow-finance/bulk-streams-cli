@@ -3,9 +3,10 @@ import {
   TOKEN_PROGRAM_ID,
   getAssociatedTokenAddress,
 } from "@solana/spl-token";
-import { ComputeBudgetProgram, Connection, Keypair, PublicKey, SYSVAR_RENT_PUBKEY, SystemProgram, Transaction, SendTransactionError } from "@solana/web3.js";
+import { ComputeBudgetProgram, Connection, Keypair, PublicKey, SYSVAR_RENT_PUBKEY, SystemProgram, Transaction, SendTransactionError, TransactionExpiredBlockheightExceededError } from "@solana/web3.js";
 import { StreamflowSolana, getBN, } from "@streamflow/stream";
 import { ICluster } from "@streamflow/common";
+import { confirmAndEnsureTransaction } from "@streamflow/common/solana";
 import BN from "bn.js";
 import bs58 from "bs58";
 
@@ -112,13 +113,26 @@ export const processVestingContract = async (
       throw err;
     }
   }
-  const res = await connection.confirmTransaction({
-    blockhash: recentBlockInfo.blockhash,
-    lastValidBlockHeight: recentBlockInfo.lastValidBlockHeight + 50,
-    signature
-  }, "confirmed");
-  if (res.value.err) {
-    throw new Error(res.value.err.toString());
+  try {
+    const res = await connection.confirmTransaction({
+      blockhash: recentBlockInfo.blockhash,
+      lastValidBlockHeight: recentBlockInfo.lastValidBlockHeight + 50,
+      signature
+    }, "confirmed");
+    if (res.value.err) {
+      throw new Error(res.value.err.toString());
+    }
+  } catch (e) {
+    // If BlockHeight expired, we will check tx status one last time to make sure
+    if (e instanceof TransactionExpiredBlockheightExceededError) {
+      console.log(`\n${recipientInfo.address}: Got 'BlockHeight expired', will try to confirm anyway in 3 seconds...`)
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      const value = await confirmAndEnsureTransaction(connection, signature);
+      if (!value) {
+        throw e;
+      }
+    }
+    throw e;
   }
   return { txId: signature, contractId: metadata.publicKey.toBase58() };
 };
