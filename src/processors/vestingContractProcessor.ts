@@ -110,10 +110,9 @@ export const processVestingContract = async (
     const res = await connection.simulateTransaction(tx, { commitment });
     if (res.value.err) {
       const errMessage = res.value.err.toString();
-      if (errMessage.includes("BlockhashNotFound") && i < 2) {
-        continue
+      if (!errMessage.includes("BlockhashNotFound") || i === 2) {
+        throw new Error(errMessage);
       }
-      throw new Error(errMessage);
     }
     break;
   }
