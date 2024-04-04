@@ -26,7 +26,7 @@ export const getStreamParameters = async (options: ICLIOptions): Promise<ICLIStr
     start = await promptDateTime("start", "(leave empty to start immediately)");
   } else {
     start = options.vestingStartTs
-    renderPromptValue('Start', start.toString())
+    renderPromptValue('Start', start.toString(), `(${new Date(start * 1000).toISOString()})`)
   }
   const duration = await promptTimePeriod("vesting duration", options.vestingDurationUnit, options.vestingDurationValue);
   if (options.vestingUnlockCount === undefined) {
