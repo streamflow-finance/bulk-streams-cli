@@ -12,7 +12,6 @@ import bs58 from "bs58";
 
 import { ICLIStreamParameters } from "../CLIService/streamParameters";
 import { IRecipientInfo } from "../utils/recipientStream";
-import { Instruction } from "@project-serum/anchor";
 
 const { PROGRAM_ID, STREAMFLOW_TREASURY_PUBLIC_KEY, FEE_ORACLE_PUBLIC_KEY, WITHDRAWOR_PUBLIC_KEY } =
   StreamflowSolana.constants;
@@ -32,6 +31,7 @@ export const processVestingContract = async (
   if (!programId) {
     programId = PROGRAM_ID[useDevnet ? ICluster.Devnet : ICluster.Mainnet];
   }
+  console.log("###",sender.publicKey.toString());
   const pid = new PublicKey(programId);
   const metadata = Keypair.generate();
   const [escrowTokens] = PublicKey.findProgramAddressSync([Buffer.from("strm"), metadata.publicKey.toBuffer()], pid);
@@ -109,7 +109,10 @@ export const processVestingContract = async (
 
   const res = await connection.simulateTransaction(tx, { commitment });
   if (res.value.err) {
-    throw new Error(res.value.err.toString());
+    console.log("#### Simulate Transaction")
+    console.log("####", JSON.stringify(res.value))
+    console.log("####", JSON.stringify(res.value.err))
+  throw new Error(JSON.stringify(res.value.err));
   }
 
   let signature = bs58.encode(tx.signatures[0]);
@@ -117,6 +120,7 @@ export const processVestingContract = async (
   const rawTransaction = tx.serialize();
   try {
     while (blockheight < recentBlockInfo.lastValidBlockHeight) {
+      console.log("#### Send Raw Transaction")
       await connection.sendRawTransaction(rawTransaction, { maxRetries: 0, minContextSlot: context.slot, preflightCommitment: commitment, skipPreflight: true });
       await sleep(500);
       const value = await confirmAndEnsureTransaction(connection, signature);
@@ -130,6 +134,7 @@ export const processVestingContract = async (
     await sleep(3000);
   }
 
+  console.log("#### Confirm Transaction")
   while (blockheight < recentBlockInfo.lastValidBlockHeight + 50) {
     blockheight = await connection.getBlockHeight(commitment);
     const value = await confirmAndEnsureTransaction(connection, signature);

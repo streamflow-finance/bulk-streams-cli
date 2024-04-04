@@ -23,6 +23,8 @@ import {
 import { RecipientProgress } from "./utils/progress";
 import { IRecipientInfo, createRecipientStream } from "./utils/recipientStream";
 import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoices } from "./utils/tokens";
+import { toStringifyArray } from "./utils/privateKey";
+
 
 (async () => {
   const cli = new CLIService<ICLIOptions>(cliOptions);
@@ -31,7 +33,9 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
   console.log("Reading private key.");
   const keyPath = cli.getOptions().key;
   const keyPathFormatted = path.isAbsolute(keyPath) ? keyPath : path.join(process.cwd(), keyPath);
-  const privateKey = JSON.parse(fs.readFileSync(keyPathFormatted).toString());
+  let privateKey = JSON.parse(fs.readFileSync(keyPathFormatted).toString());
+  privateKey = toStringifyArray(privateKey);
+
   const keypair = Keypair.fromSeed(Buffer.from(privateKey).subarray(0, 32));
   const wallet = new Wallet(keypair);
   const sender = wallet.publicKey;
