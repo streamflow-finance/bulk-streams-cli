@@ -1,10 +1,11 @@
 export interface IOptionConfig<TOptions extends Record<string, unknown>> {
-  letter: string;
+  letter?: string;
   key: keyof TOptions;
   description: string;
   request: string;
-  default?: string;
+  default?: any;
   valueType?: string;
+  callback?: (value: string, previous: any) => any;
 }
 
 export interface IInquirerOption {

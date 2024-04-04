@@ -1,6 +1,8 @@
 import { prompt } from "enquirer";
 
-import { promptDateTime, promtTimePeriod } from "./date";
+import { promptDateTime, promptTimePeriod } from "./date";
+import { ICLIOptions } from "../config";
+import { renderPromptValue } from "../utils/prompt";
 
 export interface ICLIStreamParameters {
   start: number;
@@ -15,59 +17,84 @@ export interface ICLIStreamParameters {
   canTopup: boolean;
 }
 
-export const getStreamParameters = async (): Promise<ICLIStreamParameters> => {
-  const start = await promptDateTime("start", "(leave empty to start immediately)");
-  const duration = await promtTimePeriod("vesting duration");
-  const { unlockCountStr } = await prompt<{ unlockCountStr: string }>([
-    {
-      type: "input",
-      name: "unlockCountStr",
-      message: `How many unlocks should be during vesting period?`,
-    },
-  ]);
-  const unlockCount = parseInt(unlockCountStr);
-  const { cliffPercentage } = await prompt<{ cliffPercentage: string }>([
-    {
-      type: "input",
-      name: "cliffPercentage",
-      message: `Percentage to be unlocked on start (cliff)?`,
-    },
-  ]);
-  const { vestingOptions } = await prompt<{ vestingOptions: string[] }>({
-    type: "multiselect",
-    name: "vestingOptions",
-    message: "Vesting contract options",
-    initial: ["cancelableBySender", "transferableByRecipient"],
-    // because of this bug https://github.com/enquirer/enquirer/issues/279#issuecomment-623461898
-    // @ts-expect-error
-    choices: [
+export const getStreamParameters = async (options: ICLIOptions): Promise<ICLIStreamParameters> => {
+  let start: number;
+  let unlockCount: number;
+  let cliffPercentage: number;
+  let vestingOptionsSet: Set<string>;
+  if (options.vestingStartTs === undefined) {
+    start = await promptDateTime("start", "(leave empty to start immediately)");
+  } else {
+    start = options.vestingStartTs
+    renderPromptValue('Start', start.toString())
+  }
+  const duration = await promptTimePeriod("vesting duration", options.vestingDurationUnit, options.vestingDurationValue);
+  if (options.vestingUnlockCount === undefined) {
+    const { unlockCountStr } = await prompt<{ unlockCountStr: string }>([
       {
-        message: "Is Cancelable By Sender",
-        name: "cancelableBySender",
+        type: "input",
+        name: "unlockCountStr",
+        message: `How many unlocks should be during vesting period?`,
       },
+    ]);
+    unlockCount = parseInt(unlockCountStr);
+  } else {
+    unlockCount = options.vestingUnlockCount;
+    renderPromptValue('Unlocks', unlockCount.toString())
+  }
+  if (options.vestingCliffPercentage === undefined) {
+    const { cliffPercentageStr } = await prompt<{ cliffPercentageStr: string }>([
       {
-        message: "Is Cancelable By Recipient",
-        name: "cancelableByRecipient",
+        type: "input",
+        name: "cliffPercentage",
+        message: `Percentage to be unlocked on start (cliff)?`,
       },
-      {
-        message: "Is Transferable By Sender",
-        name: "transferableBySender",
-      },
-      {
-        message: "Is Transferable By Recipient",
-        name: "transferableByRecipient",
-      },
-      {
-        message: "Auto-Claim is enabled",
-        name: "automaticWithdrawal",
-      },
-      {
-        message: "Vesting contract can be Topped up",
-        name: "canTopup",
-      },
-    ],
-  });
-  const vestingOptionsSet = new Set(vestingOptions);
+    ]);
+    cliffPercentage = cliffPercentageStr ? parseFloat(cliffPercentageStr) : 0;
+  } else {
+    cliffPercentage = options.vestingCliffPercentage;
+    renderPromptValue('Cliff', `${cliffPercentage}%`)
+  }
+  if (options.vestingOptions === undefined) {
+    const { vestingOptions } = await prompt<{ vestingOptions: string[] }>({
+      type: "multiselect",
+      name: "vestingOptions",
+      message: "Vesting contract options (use `space` button to enable/disable)",
+      initial: ["cancelableBySender", "transferableByRecipient"],
+      // because of this bug https://github.com/enquirer/enquirer/issues/279#issuecomment-623461898
+      // @ts-expect-error
+      choices: [
+        {
+          message: "Is Cancelable By Sender",
+          name: "cancelableBySender",
+        },
+        {
+          message: "Is Cancelable By Recipient",
+          name: "cancelableByRecipient",
+        },
+        {
+          message: "Is Transferable By Sender",
+          name: "transferableBySender",
+        },
+        {
+          message: "Is Transferable By Recipient",
+          name: "transferableByRecipient",
+        },
+        {
+          message: "Auto-Claim is enabled",
+          name: "automaticWithdrawal",
+        },
+        {
+          message: "Vesting contract can be Topped up",
+          name: "canTopup",
+        },
+      ],
+    });
+    vestingOptionsSet = new Set(vestingOptions);
+  } else {
+    vestingOptionsSet = new Set(options.vestingOptions);
+    renderPromptValue('Vesting options', options.vestingOptions.join(', '))
+  }
 
   const cancelableBySender = vestingOptionsSet.has("cancelableBySender");
   const cancelableByRecipient = vestingOptionsSet.has("cancelableByRecipient");
@@ -80,7 +107,7 @@ export const getStreamParameters = async (): Promise<ICLIStreamParameters> => {
     start,
     duration,
     unlockCount,
-    cliffPercentage: parseFloat(cliffPercentage) || 0,
+    cliffPercentage,
     cancelableBySender,
     cancelableByRecipient,
     automaticWithdrawal,

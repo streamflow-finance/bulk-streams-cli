@@ -1,7 +1,8 @@
 import { Wallet } from "@project-serum/anchor";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import chalk from "chalk";
-import EventEmitter from "events";
+import { createHash } from "crypto";
+import { prompt } from "enquirer";
 import fs from "fs";
 import path from "path";
 import { Transform } from "stream";
@@ -34,13 +35,18 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
   const keypair = Keypair.fromSeed(Buffer.from(privateKey).subarray(0, 32));
   const wallet = new Wallet(keypair);
   const sender = wallet.publicKey;
+  const useDevnet = cli.getOptions().devnet;
 
-  console.log("Connecting to RPC node.");
+  if (!cli.getOptions().rpc) {
+    return cli.error(chalk.red("\n[Error]: Cannot connect to RPC node. RPC URL is not provided."));
+  }
+
+  console.log(`Connecting to RPC node. RPC URL: ${cli.getOptions().rpc}`);
   const connection = new Connection(cli.getOptions().rpc);
 
   console.log("Getting token metadata.");
   const userTokens = await getUserTokens(connection, sender);
-  const tokenMetaMap = await getTokenMetadataMap();
+  const tokenMetaMap = await getTokenMetadataMap(useDevnet);
 
   if (!cli.getOptions().token) {
     await cli.specifyOption("token", "Select a token to distribute.", prepareUserChoices(userTokens, tokenMetaMap));
@@ -51,15 +57,49 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
   const decimals = await getTokenDecimals(connection, mint);
 
   const recipientsPath = cli.getOptions().recipients;
-  const rate = parseInt(cli.getOptions().speed);
+  if (!recipientsPath) {
+    return cli.error(chalk.red("\n[Error]: Recipients CSV file path is not provided."));
+  }
+
+  const recipientsFile = fs.readFileSync(recipientsPath, "utf-8");
+  const columns = recipientsFile.trim().split("\n")[0].split(",");
+  const csvContent = recipientsFile.trim().split("\n").slice(1);
+  const lastColumn = columns.at(-1);
+  const isValidHash = /^[A-Fa-f0-9]{64}$/.test(lastColumn || '');
+  const fileHash = createHash("sha256").update(csvContent.join("\n")).digest("hex");
+
+  if (isValidHash) {
+    let msg: string;
+    if (lastColumn === fileHash) {
+      msg = 'This file has already been processed, are you sure you want to proceed?'
+    } else {
+      msg = 'It seems that this file has already been processed, but was modified afterwards. Are you sure you want to proceed?'
+    }
+    const res = await prompt<{ proceed: boolean }>({ name: 'proceed', type: 'toggle', enabled: 'Yes', disabled: 'No', message: msg })
+    if (!res.proceed) {
+      return;
+    }
+  }
+
+  const rate = cli.getOptions().speed;
 
   // Processing vesting parameters
   const isVestingContract = cli.getOptions().vesting;
-  const useDevnet = cli.getOptions().devnet;
-  const vestingContractParameters = isVestingContract ? await getStreamParameters() : null;
+  const vestingContractParameters = isVestingContract ? await getStreamParameters(cli.getOptions()) : null;
   const priorityFee = cli.getOptions().priorityFee;
   const programId = cli.getOptions().programId;
-  const computePrice = priorityFee ? parseInt(priorityFee) : undefined;
+  const computePrice = priorityFee;
+
+  const res = await prompt<{ proceed: boolean }>({
+    name: 'proceed',
+    type: 'toggle',
+    enabled: 'Yes',
+    disabled: 'No',
+    message: 'Are all these parameters correct? Pressing `Yes` will start the procedure.'
+  })
+  if (!res.proceed) {
+    return;
+  }
 
   const progress = new RecipientProgress();
 
@@ -77,7 +117,7 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
   const startTime = process.hrtime();
   let activeProcessing = 0;
   let processingStarted = false;
-  const processingEvent = new EventEmitter();
+
   recipientStream.on("data", async (row: IRecipientInfo) => {
     activeProcessing++;
     processingStarted = true;
@@ -90,7 +130,6 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
     }
 
     try {
-
       if (isVestingContract) {
         const { txId, contractId } = await processVestingContract(
           connection,
@@ -102,7 +141,7 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
           decimals,
           vestingContractParameters!,
           computePrice,
-        )
+        );
         successStream.write([row.amount, row.address.toBase58(), row.name, row.email, txId, contractId]);
       } else {
         const { txId } = await processTokenTransfer(connection, keypair, row, mint, decimals, computePrice);
@@ -124,7 +163,8 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
     progress.end();
-    console.log("CSV file has been processed!");
+    fs.writeFileSync(recipientsPath, [[...columns, fileHash].join(","), ...csvContent].join("\n"));
+    console.log("\nCSV file has been processed!");
     if (successCounter) console.log(chalk.green(`${successCounter} Transfers have been successful!`));
     if (errorCounter)
       console.log(
@@ -136,6 +176,6 @@ import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoice
 
     const endTime = process.hrtime(startTime);
     const elapsedSeconds = (endTime[0] + endTime[1] / 1e9).toFixed(3);
-    console.log("It took " + elapsedSeconds + "seconds");
+    console.log("It took " + elapsedSeconds + " seconds");
   });
 })();

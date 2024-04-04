@@ -1,5 +1,5 @@
 import { TOKEN_PROGRAM_ID, mintTo } from "@solana/spl-token";
-import { TokenInfo, TokenListProvider } from "@solana/spl-token-registry";
+import { ENV, TokenInfo, TokenListProvider } from "@solana/spl-token-registry";
 import { Connection, ParsedAccountData, PublicKey } from "@solana/web3.js";
 
 import { IInquirerOption } from "../CLIService/types";
@@ -34,9 +34,9 @@ export const prepareUserChoices = (
     };
   });
 
-export const getTokenMetadataMap = async () => {
+export const getTokenMetadataMap = async (devnet: boolean) => {
   const tokenListAll = await new TokenListProvider().resolve();
-  const tokenList = tokenListAll.filterByChainId(101).getList();
+  const tokenList = tokenListAll.filterByChainId(devnet ? ENV.Devnet : ENV.MainnetBeta).getList();
   return tokenList.reduce((map, item) => {
     map.set(item.address, item);
     return map;
