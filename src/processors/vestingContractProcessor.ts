@@ -12,7 +12,6 @@ import bs58 from "bs58";
 
 import { ICLIStreamParameters } from "../CLIService/streamParameters";
 import { IRecipientInfo } from "../utils/recipientStream";
-import { Instruction } from "@project-serum/anchor";
 
 const { PROGRAM_ID, STREAMFLOW_TREASURY_PUBLIC_KEY, FEE_ORACLE_PUBLIC_KEY, WITHDRAWOR_PUBLIC_KEY } =
   StreamflowSolana.constants;
@@ -107,9 +106,16 @@ export const processVestingContract = async (
   const tx = new VersionedTransaction(messageV0);
   tx.sign([sender, metadata]);
 
-  const res = await connection.simulateTransaction(tx, { commitment });
-  if (res.value.err) {
-    throw new Error(res.value.err.toString());
+  for (let _ = 0; _ < 3; _++) {
+    const res = await connection.simulateTransaction(tx, { commitment });
+    if (res.value.err) {
+      const errMessage = res.value.err.toString();
+      if (errMessage.includes("Blockhash not found")) {
+        continue
+      }
+      throw new Error(errMessage);
+    }
+    break;
   }
 
   let signature = bs58.encode(tx.signatures[0]);
