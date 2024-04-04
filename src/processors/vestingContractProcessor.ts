@@ -91,7 +91,7 @@ export const processVestingContract = async (
     },
   );
 
-  const commitment = "confirmed";
+  const commitment = "finalized";
   const { context, value: recentBlockInfo } = await connection.getLatestBlockhashAndContext({ commitment });
 
   const ixs: TransactionInstruction[] = [ComputeBudgetProgram.setComputeUnitLimit({ units: 220_000 })];
