@@ -34,10 +34,9 @@ Script will create 3 output filed.
 2. Errored transactions. Errored file can be used as input for the next run to retry.
 3. Invalid rows that script wasn't able to parse.
 
-### Vesting contracts creation
+### Vesting Contracts creation
 
 Creating Vesting contracts are the same, just pass the `-v or --vesting` flag alongside with other parameters.
-NOTE: Vesting contracts doesn't have non-interactive mode yet. So you have to set up vesting contract parameters interactively. All other parameters are still valid for vesting contracts. (E.g. speed, rpc, recipients file etc.)
 
 #### Program ID
 
@@ -47,11 +46,32 @@ You can set custom program id with `-i` or `--program-id` parameter, use it only
 
 Solana network may be congested, so using just base fee may not be enough to process transaction at times. In this case we recommend to use Priority Fees https://solana.com/developers/guides/advanced/how-to-use-priority-fees.
 
-You can use `-p` parameter to pass custom priority fee that will be set for each transaction. Fee is set per computational unit in micro-lamports, by default transaction requests 200000 CU. For example, if you set `-p` value to 50000 it would mean that cumulative price per transaction will be `0.000001 SOL` (+ base fee which is fixed to `0.000005 SOL` currently).
+You can use `-p` parameter to pass custom priority fee that will be set for each transaction. Fee is set per computational unit in micro-lamports, compute limit is set to 220_000 CU. For example, if you set `-p` value to 50000 it would mean that cumulative price per transaction will be `0.000011 SOL` (+ base fee which is fixed to `0.000005 SOL` currently).
 
 ```
-(5000 / 10^6) * 200000 / 10^9
+(5000 / 10^6) * 220000 / 10^9
 ```
+
+#### Parameters
+
+The script will enquire you about all vesting parameters in interactive prompt. As an alternative though every parameter can be supplied via CLI:
+
+```
+  --vesting-start-ts  <unixtimestamp>             Start timestamp of vesting, in seconds
+  --vesting-duration-unit  <duration_unit>        Duration Unit of vesting, in seconds
+  --vesting-duration-value  <duration_value>      For how many Duration Units vesting should last
+  --vesting-unlock-count  <unlock_count>          Desired number of Unlocks, first unlock will be at start_ts + unlock_period
+  --vesting-cliff-percentage  <cliff_percentage>  Percentage of the amount that should be unlocked right at the start
+  --vesting-options  <options>                    A Comma Separated list of options, pass an empty string to disable all options, available options are:
+                                                  cancelableBySender
+                                                  cancelableByRecipient
+                                                  automaticWithdrawal
+                                                  transferableBySender
+                                                  transferableByRecipient
+                                                  canTopup
+```
+
+NOTE: to completely disable vesting options pass `--vesting-options=` (include equal sign to specify that the passed value is an empty string)
 
 ### Technical
 
@@ -59,6 +79,6 @@ Major tools used.
 
 - Typescript
 - Node.js Commander (CLI handling)
-- Inquirer (User interactive prompts)
+- Enquirer (User interactive prompts)
 - Solana/Web3.js (Blockchain interactions)
 - Streamflow/stream SDK (Vesting interactions)
