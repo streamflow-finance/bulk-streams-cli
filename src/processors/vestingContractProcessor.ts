@@ -3,15 +3,16 @@ import {
   TOKEN_PROGRAM_ID,
   getAssociatedTokenAddress,
 } from "@solana/spl-token";
-import { ComputeBudgetProgram, Connection, Keypair, PublicKey, SYSVAR_RENT_PUBKEY, SystemProgram, Transaction, SendTransactionError, TransactionExpiredBlockheightExceededError } from "@solana/web3.js";
+import { ComputeBudgetProgram, Connection, Keypair, PublicKey, SYSVAR_RENT_PUBKEY, SystemProgram, TransactionInstruction, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
 import { StreamflowSolana, getBN, } from "@streamflow/stream";
-import { ICluster } from "@streamflow/common";
+import { ICluster, sleep } from "@streamflow/common";
 import { confirmAndEnsureTransaction } from "@streamflow/common/solana";
 import BN from "bn.js";
 import bs58 from "bs58";
 
 import { ICLIStreamParameters } from "../CLIService/streamParameters";
 import { IRecipientInfo } from "../utils/recipientStream";
+import { Instruction } from "@project-serum/anchor";
 
 const { PROGRAM_ID, STREAMFLOW_TREASURY_PUBLIC_KEY, FEE_ORACLE_PUBLIC_KEY, WITHDRAWOR_PUBLIC_KEY } =
   StreamflowSolana.constants;
@@ -90,50 +91,52 @@ export const processVestingContract = async (
     },
   );
 
-  const recentBlockInfo = await connection.getLatestBlockhash();
+  const commitment = "confirmed";
+  const { context, value: recentBlockInfo } = await connection.getLatestBlockhashAndContext({ commitment });
 
-  const tx = new Transaction({
-    feePayer: sender.publicKey,
-    ...recentBlockInfo,
-  });
-  tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 220_000 }));
+  const ixs: TransactionInstruction[] = [ComputeBudgetProgram.setComputeUnitLimit({ units: 220_000 })];
   if (computePrice) {
-    tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: computePrice }));
+    ixs.push(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: computePrice }));
   }
-  tx.add(ix);
-  tx.partialSign(sender);
-  tx.partialSign(metadata);
-  let signature = bs58.encode(tx.signature!);
-  try {
-    signature = await connection.sendRawTransaction(tx.serialize(), { maxRetries: 3 });
-  } catch (err) {
-    if (err instanceof SendTransactionError && err.message.includes("Blockhash not found")) {
-      console.log(`\n${recipientInfo.address}: Got 'Blockhash not found', will validate the transaction landing in 3 seconds...`)
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-    } else {
-      throw err;
-    }
+  ixs.push(ix);
+  const messageV0 = new TransactionMessage({
+    payerKey: sender.publicKey,
+    recentBlockhash: recentBlockInfo.blockhash,
+    instructions: ixs,
+  }).compileToV0Message();
+  const tx = new VersionedTransaction(messageV0);
+  tx.sign([sender, metadata]);
+
+  const res = await connection.simulateTransaction(tx, { commitment });
+  if (res.value.err) {
+    throw new Error(res.value.err.toString());
   }
+
+  let signature = bs58.encode(tx.signatures[0]);
+  let blockheight = await connection.getBlockHeight(commitment);
+  const rawTransaction = tx.serialize();
   try {
-    const res = await connection.confirmTransaction({
-      blockhash: recentBlockInfo.blockhash,
-      lastValidBlockHeight: recentBlockInfo.lastValidBlockHeight + 50,
-      signature
-    }, "confirmed");
-    if (res.value.err) {
-      throw new Error(res.value.err.toString());
+    while (blockheight < recentBlockInfo.lastValidBlockHeight) {
+      await connection.sendRawTransaction(rawTransaction, { maxRetries: 0, minContextSlot: context.slot, preflightCommitment: commitment, skipPreflight: true });
+      await sleep(500);
+      const value = await confirmAndEnsureTransaction(connection, signature);
+      if (value) {
+        return { txId: signature, contractId: metadata.publicKey.toBase58() };
+      }
+      blockheight = await connection.getBlockHeight(commitment);
     }
   } catch (e) {
-    // If BlockHeight expired, we will check tx status one last time to make sure
-    if (e instanceof TransactionExpiredBlockheightExceededError) {
-      console.log(`\n${recipientInfo.address}: Got 'BlockHeight expired', will try to confirm anyway in 3 seconds...`)
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      const value = await confirmAndEnsureTransaction(connection, signature);
-      if (!value) {
-        throw e;
-      }
-    }
-    throw e;
+    console.log(`\n${recipientInfo.address}: Probably failed, will try to confirm just in case in 3`);
+    await sleep(3000);
   }
-  return { txId: signature, contractId: metadata.publicKey.toBase58() };
+
+  while (blockheight < recentBlockInfo.lastValidBlockHeight + 50) {
+    blockheight = await connection.getBlockHeight(commitment);
+    const value = await confirmAndEnsureTransaction(connection, signature);
+    if (value) {
+      return { txId: signature, contractId: metadata.publicKey.toBase58() };
+    }
+  }
+
+  throw new Error(`${recipientInfo.address}: transaction ${signature} expired.`);
 };
