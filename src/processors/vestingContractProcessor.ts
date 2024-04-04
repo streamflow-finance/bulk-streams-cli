@@ -107,12 +107,16 @@ export const processVestingContract = async (
   const tx = new VersionedTransaction(messageV0);
   tx.sign([sender, metadata]);
 
-  const res = await connection.simulateTransaction(tx, { commitment });
-  if (res.value.err) {
-    console.log("#### Simulate Transaction")
-    console.log("####", JSON.stringify(res.value))
-    console.log("####", JSON.stringify(res.value.err))
-  throw new Error(JSON.stringify(res.value.err));
+  for (let _ = 0; _ < 3; _++) {
+    const res = await connection.simulateTransaction(tx, { commitment });
+    if (res.value.err) {
+      const errMessage = res.value.err.toString();
+      if (errMessage.includes("BlockhashNotFound")) {
+        continue
+      }
+      throw new Error(errMessage);
+    }
+    break;
   }
 
   let signature = bs58.encode(tx.signatures[0]);
