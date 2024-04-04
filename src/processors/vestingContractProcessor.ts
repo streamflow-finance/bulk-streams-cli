@@ -90,7 +90,7 @@ export const processVestingContract = async (
     },
   );
 
-  const commitment = "finalized";
+  const commitment = "confirmed";
   const { context, value: recentBlockInfo } = await connection.getLatestBlockhashAndContext({ commitment });
 
   const ixs: TransactionInstruction[] = [ComputeBudgetProgram.setComputeUnitLimit({ units: 220_000 })];
@@ -106,11 +106,11 @@ export const processVestingContract = async (
   const tx = new VersionedTransaction(messageV0);
   tx.sign([sender, metadata]);
 
-  for (let _ = 0; _ < 3; _++) {
+  for (let i = 0; i < 3; i++) {
     const res = await connection.simulateTransaction(tx, { commitment });
     if (res.value.err) {
       const errMessage = res.value.err.toString();
-      if (errMessage.includes("BlockhashNotFound")) {
+      if (errMessage.includes("BlockhashNotFound") && i < 2) {
         continue
       }
       throw new Error(errMessage);
@@ -132,7 +132,7 @@ export const processVestingContract = async (
       blockheight = await connection.getBlockHeight(commitment);
     }
   } catch (e) {
-    console.log(`\n${recipientInfo.address}: Probably failed, will try to confirm just in case in 3`);
+    console.log(`\n${recipientInfo.address}: Probably failed, will try to confirm just in case in 3`, e);
     await sleep(3000);
   }
 
