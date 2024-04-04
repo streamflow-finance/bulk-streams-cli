@@ -42,17 +42,7 @@ Creating Vesting contracts are the same, just pass the `-v or --vesting` flag al
 
 You can set custom program id with `-i` or `--program-id` parameter, use it only if you need to use non-standard Streamflow deployment.
 
-### Priority Fees
-
-Solana network may be congested, so using just base fee may not be enough to process transaction at times. In this case we recommend to use Priority Fees https://solana.com/developers/guides/advanced/how-to-use-priority-fees.
-
-You can use `-p` parameter to pass custom priority fee that will be set for each transaction. Fee is set per computational unit in micro-lamports, compute limit is set to 220_000 CU. For example, if you set `-p` value to 50000 it would mean that cumulative price per transaction will be `0.000011 SOL` (+ base fee which is fixed to `0.000005 SOL` currently).
-
-```
-(5000 / 10^6) * 220000 / 10^9
-```
-
-#### Parameters
+#### Vesting Parameters
 
 The script will enquire you about all vesting parameters in interactive prompt. As an alternative though every parameter can be supplied via CLI:
 
@@ -72,6 +62,16 @@ The script will enquire you about all vesting parameters in interactive prompt. 
 ```
 
 NOTE: to completely disable vesting options pass `--vesting-options=` (include equal sign to specify that the passed value is an empty string)
+
+### Priority Fees
+
+Solana network may be congested, so using just base fee may not be enough to process transaction at times. In this case we recommend to use Priority Fees https://solana.com/developers/guides/advanced/how-to-use-priority-fees.
+
+You can use `-p` parameter to pass custom priority fee that will be set for each transaction. Fee is set per computational unit in micro-lamports, compute limit is set to 220_000 CU. For example, if you set `-p` value to 50000 it would mean that cumulative price per transaction will be `0.000011 SOL` (+ base fee which is fixed to `0.000005 SOL` currently).
+
+```
+(5000 / 10^6) * 220000 / 10^9
+```
 
 ### Technical
 
