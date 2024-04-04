@@ -33,9 +33,10 @@ import { toStringifyArray } from "./utils/privateKey";
   console.log("Reading private key.");
   const keyPath = cli.getOptions().key;
   const keyPathFormatted = path.isAbsolute(keyPath) ? keyPath : path.join(process.cwd(), keyPath);
-  let privateKey = JSON.parse(fs.readFileSync(keyPathFormatted).toString());
+  let privateKey = fs.readFileSync(keyPathFormatted).toString();
   privateKey = toStringifyArray(privateKey);
 
+  privateKey = JSON.parse(privateKey)
   const keypair = Keypair.fromSeed(Buffer.from(privateKey).subarray(0, 32));
   const wallet = new Wallet(keypair);
   const sender = wallet.publicKey;
