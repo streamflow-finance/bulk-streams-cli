@@ -31,7 +31,6 @@ export const processVestingContract = async (
   if (!programId) {
     programId = PROGRAM_ID[useDevnet ? ICluster.Devnet : ICluster.Mainnet];
   }
-  console.log("###",sender.publicKey.toString());
   const pid = new PublicKey(programId);
   const metadata = Keypair.generate();
   const [escrowTokens] = PublicKey.findProgramAddressSync([Buffer.from("strm"), metadata.publicKey.toBuffer()], pid);
@@ -124,7 +123,6 @@ export const processVestingContract = async (
   const rawTransaction = tx.serialize();
   try {
     while (blockheight < recentBlockInfo.lastValidBlockHeight) {
-      console.log("#### Send Raw Transaction")
       await connection.sendRawTransaction(rawTransaction, { maxRetries: 0, minContextSlot: context.slot, preflightCommitment: commitment, skipPreflight: true });
       await sleep(500);
       const value = await confirmAndEnsureTransaction(connection, signature);
@@ -138,7 +136,6 @@ export const processVestingContract = async (
     await sleep(3000);
   }
 
-  console.log("#### Confirm Transaction")
   while (blockheight < recentBlockInfo.lastValidBlockHeight + 50) {
     blockheight = await connection.getBlockHeight(commitment);
     const value = await confirmAndEnsureTransaction(connection, signature);
