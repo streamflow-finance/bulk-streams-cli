@@ -3,16 +3,18 @@ import {
   TOKEN_PROGRAM_ID,
   getAssociatedTokenAddress,
 } from "@solana/spl-token";
-import { ComputeBudgetProgram, Connection, Keypair, PublicKey, SYSVAR_RENT_PUBKEY, SystemProgram, TransactionInstruction, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
+import { ComputeBudgetProgram, Connection, Keypair, PublicKey, SendTransactionError, SYSVAR_RENT_PUBKEY, SystemProgram, TransactionInstruction, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
 import { StreamflowSolana, getBN, } from "@streamflow/stream";
 import { ICluster, sleep } from "@streamflow/common";
-import { confirmAndEnsureTransaction } from "@streamflow/common/solana";
+import { confirmAndEnsureTransaction, TransactionFailedError } from "@streamflow/common/solana";
 import BN from "bn.js";
 import bs58 from "bs58";
+import throttledQueue from 'throttled-queue';
 
 import { ICLIStreamParameters } from "../CLIService/streamParameters";
 import { IRecipientInfo } from "../utils/recipientStream";
 
+const SEND_THROTTLE = throttledQueue(2, 1000); // 2 sends per second
 const { PROGRAM_ID, STREAMFLOW_TREASURY_PUBLIC_KEY, FEE_ORACLE_PUBLIC_KEY, WITHDRAWOR_PUBLIC_KEY } =
   StreamflowSolana.constants;
 const { createStreamInstruction } = StreamflowSolana;
@@ -120,26 +122,47 @@ export const processVestingContract = async (
   let signature = bs58.encode(tx.signatures[0]);
   let blockheight = await connection.getBlockHeight(commitment);
   const rawTransaction = tx.serialize();
-  try {
-    while (blockheight < recentBlockInfo.lastValidBlockHeight) {
-      await connection.sendRawTransaction(rawTransaction, { maxRetries: 0, minContextSlot: context.slot, preflightCommitment: commitment, skipPreflight: true });
-      await sleep(500);
+  let transactionSent = false;
+  while (blockheight < recentBlockInfo.lastValidBlockHeight + 15) {
+    try {
+      if (blockheight < recentBlockInfo.lastValidBlockHeight || !transactionSent) {
+        await SEND_THROTTLE(async () => {
+          await connection.sendRawTransaction(rawTransaction, {
+            maxRetries: 0,
+            minContextSlot: context.slot,
+            preflightCommitment: commitment,
+            skipPreflight: true,
+          })
+        });
+        transactionSent = true;
+      }
+    } catch (e) {
+      if (
+        transactionSent ||
+        (e instanceof SendTransactionError && e.message.includes("Minimum context slot has not been reached"))
+      ) {
+        await sleep(500);
+        continue;
+      }
+      throw e;
+    }
+    await sleep(500);
+    try {
       const value = await confirmAndEnsureTransaction(connection, signature);
       if (value) {
         return { txId: signature, contractId: metadata.publicKey.toBase58() };
-      }
-      blockheight = await connection.getBlockHeight(commitment);
-    }
-  } catch (e) {
-    console.log(`\n${recipientInfo.address}: Probably failed, will try to confirm just in case in 3`, e);
-    await sleep(3000);
-  }
 
-  while (blockheight < recentBlockInfo.lastValidBlockHeight + 50) {
-    blockheight = await connection.getBlockHeight(commitment);
-    const value = await confirmAndEnsureTransaction(connection, signature);
-    if (value) {
-      return { txId: signature, contractId: metadata.publicKey.toBase58() };
+      }
+    } catch (e) {
+      if (e instanceof TransactionFailedError) {
+        throw e;
+      }
+      await sleep(500);
+    }
+    try {
+      blockheight = await connection.getBlockHeight(commitment);
+    } catch (_e) {
+      await sleep(500);
     }
   }
 
