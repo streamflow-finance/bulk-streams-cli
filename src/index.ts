@@ -13,12 +13,10 @@ import { ICLIOptions, cliOptions } from "./config";
 import { processTokenTransfer } from "./processors/tokenTransferProcessor";
 import { processVestingContract } from "./processors/vestingContractProcessor";
 import {
-  createErrorFileStream,
-  createErrorStream,
-  createInvalidFileStream,
-  createInvalidStream,
-  createSuccessFileStream,
-  createSuccessStream,
+  createFileStream,
+  createErrorPipe,
+  createInvalidPipe,
+  createSuccessPipe,
 } from "./utils/outputStream";
 import { RecipientProgress } from "./utils/progress";
 import { IRecipientInfo, createRecipientStream } from "./utils/recipientStream";
@@ -110,14 +108,14 @@ import { toStringifyArray } from "./utils/privateKey";
 
   const recipientStream: Transform = createRecipientStream(recipientsPath, rate);
   let successCounter = 0;
-  const successStream = createSuccessStream(!!isVestingContract);
-  successStream.pipe(createSuccessFileStream());
+  const { stream: successStream, name: successName } = createSuccessPipe(!!isVestingContract);
+  successStream.pipe(createFileStream(successName));
   let invalidCounter = 0;
-  const invalidStream = createInvalidStream();
-  invalidStream.pipe(createInvalidFileStream());
+  const { stream: invalidStream, name: invalidName } = createInvalidPipe();
+  invalidStream.pipe(createFileStream(invalidName));
   let errorCounter = 0;
-  const errorStream = createErrorStream();
-  errorStream.pipe(createErrorFileStream());
+  const { stream: errorStream, name: errorName } = createErrorPipe();
+  errorStream.pipe(createFileStream(errorName));
 
   const startTime = process.hrtime();
   let activeProcessing = 0;
@@ -174,7 +172,7 @@ import { toStringifyArray } from "./utils/privateKey";
     if (errorCounter)
       console.log(
         chalk.yellow(
-          `${errorCounter} Transfers have failed, you can retry transfers by reusing error.csv output file!`,
+          `${errorCounter} Transfers have failed, you can retry transfers by reusing ${errorName} output file!`,
         ),
       );
     if (invalidCounter) console.log(chalk.red(`There were ${invalidCounter} invalid rows in the provided file!`));

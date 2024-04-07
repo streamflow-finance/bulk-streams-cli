@@ -4,35 +4,31 @@ import path from "path";
 
 const ts = Date.now().toString();
 
-export const createSuccessStream = (isVestingContract?: boolean) =>
-  stringify({
+export const createSuccessPipe = (isVestingContract?: boolean) => ({
+  name: `${ts}-success.csv`,
+  stream: stringify({
     header: true,
     columns: ["Amount", "Wallet Address", "Title", "Email", "TransactionID", ...(isVestingContract ? ["ContractID"] : [])],
-  });
+  })
+});
 
-export const createSuccessFileStream = () => {
-  const outputPath = path.join(process.cwd(), `./${ts}-success.csv`);
-  return fs.createWriteStream(outputPath);
-};
-
-export const createInvalidStream = () =>
-  stringify({
+export const createInvalidPipe = () => ({
+  name: `${ts}-invalid.csv`,
+  stream: stringify({
     header: true,
     columns: ["Amount", "Wallet Address", "Title", "Email"],
-  });
+  })
+});
 
-export const createInvalidFileStream = () => {
-  const outputPath = path.join(process.cwd(), `./${ts}-invalid.csv`);
-  return fs.createWriteStream(outputPath);
-};
-
-export const createErrorStream = () =>
-  stringify({
+export const createErrorPipe = () => ({
+  name: `${ts}-error.csv`,
+  stream: stringify({
     header: true,
     columns: ["Amount", "Wallet Address", "Title", "Email"],
-  });
+  })
+});
 
-export const createErrorFileStream = () => {
-  const outputPath = path.join(process.cwd(), `./${ts}-error.csv`);
+export const createFileStream = (name: string) => {
+  const outputPath = path.join(process.cwd(), `./${name}`);
   return fs.createWriteStream(outputPath);
 };
