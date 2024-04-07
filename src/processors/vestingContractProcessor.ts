@@ -4,7 +4,8 @@ import {
   getAssociatedTokenAddress,
 } from "@solana/spl-token";
 import { ComputeBudgetProgram, Connection, Keypair, PublicKey, SendTransactionError, SYSVAR_RENT_PUBKEY, SystemProgram, TransactionInstruction, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
-import { StreamflowSolana, getBN, } from "@streamflow/stream";
+import { StreamflowSolana, getBN } from "@streamflow/stream";
+import { decodeStream, constants } from "@streamflow/stream/solana";
 import { ICluster, sleep } from "@streamflow/common";
 import { confirmAndEnsureTransaction, TransactionFailedError } from "@streamflow/common/solana";
 import BN from "bn.js";
@@ -14,6 +15,7 @@ import throttledQueue from 'throttled-queue';
 import { ICLIStreamParameters } from "../CLIService/streamParameters";
 import { IRecipientInfo } from "../utils/recipientStream";
 
+const MINT_OFFSET = 177;
 const SEND_THROTTLE = throttledQueue(2, 1000); // 2 sends per second
 const { PROGRAM_ID, STREAMFLOW_TREASURY_PUBLIC_KEY, FEE_ORACLE_PUBLIC_KEY, WITHDRAWOR_PUBLIC_KEY } =
   StreamflowSolana.constants;
@@ -34,6 +36,26 @@ export const processVestingContract = async (
     programId = PROGRAM_ID[useDevnet ? ICluster.Devnet : ICluster.Mainnet];
   }
   const pid = new PublicKey(programId);
+  const streams = await connection.getProgramAccounts(pid, {
+    filters: [
+      {
+        memcmp: {
+          offset: MINT_OFFSET,
+          bytes: mint.toBase58(),
+        },
+      },
+      {
+        memcmp: {
+          offset: constants.STREAM_STRUCT_OFFSET_RECIPIENT,
+          bytes: recipientInfo.address.toBase58(),
+        },
+      },
+    ],
+  })
+  if (streams.length > 0) {
+    console.log(`Recipient ${recipientInfo.address.toBase58()} already has a stream for this mint, will skip`)
+    return { txId: "", contractId: streams[0].pubkey.toBase58() }
+  }
   const metadata = Keypair.generate();
   const [escrowTokens] = PublicKey.findProgramAddressSync([Buffer.from("strm"), metadata.publicKey.toBuffer()], pid);
 
