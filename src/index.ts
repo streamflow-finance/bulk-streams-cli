@@ -164,11 +164,11 @@ const PROCESS_QUEUE = new PQueue({ concurrency: 20 });
   }));
 
   recipientStream.on("close", async () => {
-    while (processingStarted && progress.getTokens().active > 0) {
+    while (processingStarted && progress.getProgressTokens().active > 0) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
     progress.end();
-    const tokens = progress.getTokens();
+    const tokens = progress.getProgressTokens();
     fs.writeFileSync(recipientsPath, [[...columns, fileHash].join(","), ...csvContent].join("\n"));
     console.log("\nCSV file has been processed!");
     if (tokens.success) console.log(chalk.green(`${tokens.success} Transfers have been successful!`));

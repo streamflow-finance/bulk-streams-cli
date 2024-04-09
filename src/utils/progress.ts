@@ -22,13 +22,13 @@ export class RecipientProgress {
 
   public async tick(token: "success" | "invalid" | "retries" | "active", tickCounter: number = 1, tokenCounter: number = 1) {
     await TICK_QUEUE.add(() => {
-      const tokens = this.getTokens();
+      const tokens = this.getProgressTokens();
       tokens[token] += tokenCounter;
       this.progress.tick(tickCounter, tokens);
     })
   }
 
-  public getTokens(): { success: number; invalid: number; retries: number; active: number } {
+  public getProgressTokens(): { success: number; invalid: number; retries: number; active: number } {
     return {
       success: (this.progress as any)?.tokens?.success || 0,
       invalid: (this.progress as any)?.tokens?.invalid || 0,
