@@ -24,9 +24,6 @@ import { IRecipientInfo, createRecipientStream } from "./utils/recipientStream";
 import { getTokenDecimals, getTokenMetadataMap, getUserTokens, prepareUserChoices } from "./utils/tokens";
 import { toStringifyArray } from "./utils/privateKey";
 
-
-// To ensure that no more than 1 progress ticks happen at a time
-const TICK_QUEUE = new PQueue({ concurrency: 1 });
 // Up to 20 concurrent tasks on processing
 const PROCESS_QUEUE = new PQueue({ concurrency: 20 });
 
@@ -134,10 +131,10 @@ const PROCESS_QUEUE = new PQueue({ concurrency: 20 });
     processingStarted = true;
     if (!row.isValid) {
       invalidStream.write(row.rawData.split(","));
-      await TICK_QUEUE.add(() => progress.tick("invalid"));
+      await progress.tick("invalid");
       return;
     }
-    await TICK_QUEUE.add(() => progress.tick("active", 0, 1));
+    await progress.tick("active", 0, 1);
 
     try {
       if (isVestingContract) {
@@ -157,13 +154,13 @@ const PROCESS_QUEUE = new PQueue({ concurrency: 20 });
         const { txId } = await processTokenTransfer(connection, keypair, row, mint, decimals, computePrice);
         successStream.write([row.amount, row.address.toBase58(), row.name, row.email, txId]);
       }
-      await TICK_QUEUE.add(() => progress.tick("success"));
+      await progress.tick("success");
     } catch (e) {
-      await TICK_QUEUE.add(() => progress.tick("retries"));
+      await progress.tick("retries");
       errorStream.write(row.rawData.split(","));
       console.info(`\n${row.address}: ${e}`);
     }
-    await TICK_QUEUE.add(() => progress.tick("active", 0, -1));
+    await progress.tick("active", 0, -1);
   }));
 
   recipientStream.on("close", async () => {

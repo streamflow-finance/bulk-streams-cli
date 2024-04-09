@@ -26,7 +26,7 @@ import { buildStreamTransaction, fetchExistingStream } from "../utils/vesting";
 
 const DEFAULT_CU = 220_000;
 const SIMULATION_CU = 500_000;
-const COMPUTE_ERROR_MARGIN = 1_000;
+const CU_MULTIPLIER = 1.1;
 // Up to 2 TX sends at a time, up to 2 per 1 second
 const SEND_QUEUE = new PQueue({ concurrency: 2, intervalCap: 2, interval: 1000 });
 const { PROGRAM_ID, STREAMFLOW_TREASURY_PUBLIC_KEY, FEE_ORACLE_PUBLIC_KEY, WITHDRAWOR_PUBLIC_KEY } = constants;
@@ -124,7 +124,7 @@ export const processVestingContract = async (
     const res = await simulateTransaction(connection, tx);
     let newCu = DEFAULT_CU;
     if (res.value.unitsConsumed) {
-      newCu = Math.floor(res.value.unitsConsumed * (1 + COMPUTE_ERROR_MARGIN / 10_000));
+      newCu = Math.floor(res.value.unitsConsumed * CU_MULTIPLIER);
     }
     ixs[0] = ComputeBudgetProgram.setComputeUnitLimit({ units: newCu });
     tx = buildStreamTransaction(ixs, recentBlockInfo.blockhash, sender, metadata);
@@ -136,14 +136,13 @@ export const processVestingContract = async (
     while (blockheight < recentBlockInfo.lastValidBlockHeight + 15) {
       try {
         if (blockheight < recentBlockInfo.lastValidBlockHeight || !transactionSent) {
-          await SEND_QUEUE.add(async () => {
-            await connection.sendRawTransaction(rawTransaction, {
+          await SEND_QUEUE.add(() => connection.sendRawTransaction(rawTransaction, {
               maxRetries: 0,
               minContextSlot: context.slot,
               preflightCommitment: commitment,
               skipPreflight: true,
-            });
-          });
+            }),
+          );
           transactionSent = true;
         }
       } catch (e) {
@@ -174,7 +173,7 @@ export const processVestingContract = async (
         await sleep(500);
       }
     }
-    console.warn(`${recipientInfo.address}: transaction ${signature} expired. Will retry in 5...`);
+    console.warn(`${recipientInfo.address}: transaction ${signature} expired. Will retry in 5 seconds...`);
     await sleep(5000);
   }
 };

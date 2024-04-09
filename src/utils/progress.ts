@@ -1,4 +1,8 @@
+import PQueue from "p-queue";
 import ProgressBar from "progress";
+
+// To ensure that no more than 1 progress tick happens at a time
+const TICK_QUEUE = new PQueue({ concurrency: 1 });
 
 export class RecipientProgress {
   private progress: ProgressBar;
@@ -16,10 +20,12 @@ export class RecipientProgress {
     });
   }
 
-  public tick(token: "success" | "invalid" | "retries" | "active", tickCounter: number = 1, tokenCounter: number = 1) {
-    const tokens = this.getTokens();
-    tokens[token] += tokenCounter;
-    this.progress.tick(tickCounter, tokens);
+  public async tick(token: "success" | "invalid" | "retries" | "active", tickCounter: number = 1, tokenCounter: number = 1) {
+    await TICK_QUEUE.add(() => {
+      const tokens = this.getTokens();
+      tokens[token] += tokenCounter;
+      this.progress.tick(tickCounter, tokens);
+    })
   }
 
   public getTokens(): { success: number; invalid: number; retries: number; active: number } {
