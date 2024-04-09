@@ -4,7 +4,6 @@ import {
   getAssociatedTokenAddress,
 } from "@solana/spl-token";
 import {
-  ComputeBudgetProgram,
   Connection,
   Keypair,
   PublicKey,
@@ -15,7 +14,12 @@ import {
 } from "@solana/web3.js";
 import { createStreamInstruction, constants } from "@streamflow/stream/solana";
 import { ICluster, sleep, getBN } from "@streamflow/common";
-import { confirmAndEnsureTransaction, simulateTransaction, TransactionFailedError } from "@streamflow/common/solana";
+import {
+  confirmAndEnsureTransaction,
+  prepareBaseInstructions,
+  simulateTransaction,
+  TransactionFailedError,
+} from "@streamflow/common/solana";
 import BN from "bn.js";
 import bs58 from "bs58";
 import PQueue from "p-queue";
@@ -106,11 +110,13 @@ export const processVestingContract = async (
 
   const commitment = "finalized";
 
-  const ixs: TransactionInstruction[] = [ComputeBudgetProgram.setComputeUnitLimit({ units: SIMULATION_CU })];
-  if (computePrice) {
-    ixs.push(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: computePrice }));
-  }
-  ixs.push(ix);
+  let ixs: TransactionInstruction[] = [
+    ...prepareBaseInstructions(connection, {
+      computePrice,
+      computeLimit: SIMULATION_CU,
+    }),
+    ix,
+  ];
 
   while (true) {
     const contractId = await fetchExistingStream(connection, pid, mint, recipientInfo.address);
@@ -126,7 +132,13 @@ export const processVestingContract = async (
     if (res.value.unitsConsumed) {
       newCu = Math.floor(res.value.unitsConsumed * CU_MULTIPLIER);
     }
-    ixs[0] = ComputeBudgetProgram.setComputeUnitLimit({ units: newCu });
+    ixs = [
+      ...prepareBaseInstructions(connection, {
+        computePrice,
+        computeLimit: newCu,
+      }),
+      ix,
+    ]
     tx = buildStreamTransaction(ixs, recentBlockInfo.blockhash, sender, metadata);
 
     let signature = bs58.encode(tx.signatures[0]);
