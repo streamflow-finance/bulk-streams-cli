@@ -3,23 +3,37 @@ import {
   TOKEN_PROGRAM_ID,
   getAssociatedTokenAddress,
 } from "@solana/spl-token";
-import { ComputeBudgetProgram, Connection, Keypair, PublicKey, SendTransactionError, SYSVAR_RENT_PUBKEY, SystemProgram, TransactionInstruction, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
-import { StreamflowSolana, getBN } from "@streamflow/stream";
-import { decodeStream, constants } from "@streamflow/stream/solana";
-import { ICluster, sleep } from "@streamflow/common";
-import { confirmAndEnsureTransaction, TransactionFailedError } from "@streamflow/common/solana";
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  SendTransactionError,
+  SYSVAR_RENT_PUBKEY,
+  SystemProgram,
+  TransactionInstruction,
+} from "@solana/web3.js";
+import { createStreamInstruction, constants } from "@streamflow/stream/solana";
+import { ICluster, sleep, getBN } from "@streamflow/common";
+import {
+  confirmAndEnsureTransaction,
+  prepareBaseInstructions,
+  simulateTransaction,
+  TransactionFailedError,
+} from "@streamflow/common/solana";
 import BN from "bn.js";
 import bs58 from "bs58";
-import throttledQueue from 'throttled-queue';
+import PQueue from "p-queue";
 
 import { ICLIStreamParameters } from "../CLIService/streamParameters";
 import { IRecipientInfo } from "../utils/recipientStream";
+import { buildStreamTransaction, fetchExistingStream } from "../utils/vesting";
 
-const MINT_OFFSET = 177;
-const SEND_THROTTLE = throttledQueue(2, 1000); // 2 sends per second
-const { PROGRAM_ID, STREAMFLOW_TREASURY_PUBLIC_KEY, FEE_ORACLE_PUBLIC_KEY, WITHDRAWOR_PUBLIC_KEY } =
-  StreamflowSolana.constants;
-const { createStreamInstruction } = StreamflowSolana;
+const DEFAULT_CU = 220_000;
+const SIMULATION_CU = 500_000;
+const CU_MULTIPLIER = 1.1;
+// Up to 2 TX sends at a time, up to 2 per 1 second
+const SEND_QUEUE = new PQueue({ concurrency: 2, intervalCap: 2, interval: 1000 });
+const { PROGRAM_ID, STREAMFLOW_TREASURY_PUBLIC_KEY, FEE_ORACLE_PUBLIC_KEY, WITHDRAWOR_PUBLIC_KEY } = constants;
 
 export const processVestingContract = async (
   connection: Connection,
@@ -36,26 +50,6 @@ export const processVestingContract = async (
     programId = PROGRAM_ID[useDevnet ? ICluster.Devnet : ICluster.Mainnet];
   }
   const pid = new PublicKey(programId);
-  const streams = await connection.getProgramAccounts(pid, {
-    filters: [
-      {
-        memcmp: {
-          offset: MINT_OFFSET,
-          bytes: mint.toBase58(),
-        },
-      },
-      {
-        memcmp: {
-          offset: constants.STREAM_STRUCT_OFFSET_RECIPIENT,
-          bytes: recipientInfo.address.toBase58(),
-        },
-      },
-    ],
-  })
-  if (streams.length > 0) {
-    console.log(`Recipient ${recipientInfo.address.toBase58()} already has a stream for this mint, will skip`)
-    return { txId: "", contractId: streams[0].pubkey.toBase58() }
-  }
   const metadata = Keypair.generate();
   const [escrowTokens] = PublicKey.findProgramAddressSync([Buffer.from("strm"), metadata.publicKey.toBuffer()], pid);
 
@@ -114,79 +108,84 @@ export const processVestingContract = async (
     },
   );
 
-  const commitment = "confirmed";
-  const { context, value: recentBlockInfo } = await connection.getLatestBlockhashAndContext({ commitment });
+  const commitment = "finalized";
 
-  const ixs: TransactionInstruction[] = [ComputeBudgetProgram.setComputeUnitLimit({ units: 220_000 })];
-  if (computePrice) {
-    ixs.push(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: computePrice }));
-  }
-  ixs.push(ix);
-  const messageV0 = new TransactionMessage({
-    payerKey: sender.publicKey,
-    recentBlockhash: recentBlockInfo.blockhash,
-    instructions: ixs,
-  }).compileToV0Message();
-  const tx = new VersionedTransaction(messageV0);
-  tx.sign([sender, metadata]);
+  let ixs: TransactionInstruction[] = [
+    ...prepareBaseInstructions(connection, {
+      computePrice,
+      computeLimit: SIMULATION_CU,
+    }),
+    ix,
+  ];
 
-  for (let i = 0; i < 3; i++) {
-    const res = await connection.simulateTransaction(tx, { commitment });
-    if (res.value.err) {
-      const errMessage = res.value.err.toString();
-      if (!errMessage.includes("BlockhashNotFound") || i === 2) {
-        throw new Error(errMessage);
-      }
+  while (true) {
+    const contractId = await fetchExistingStream(connection, pid, mint, recipientInfo.address);
+    if (contractId) {
+      console.log(`Recipient ${recipientInfo.address.toBase58()} already has a stream for this mint, will skip`);
+      return { txId: "", contractId: contractId };
     }
-    break;
-  }
 
-  let signature = bs58.encode(tx.signatures[0]);
-  let blockheight = await connection.getBlockHeight(commitment);
-  const rawTransaction = tx.serialize();
-  let transactionSent = false;
-  while (blockheight < recentBlockInfo.lastValidBlockHeight + 15) {
-    try {
-      if (blockheight < recentBlockInfo.lastValidBlockHeight || !transactionSent) {
-        await SEND_THROTTLE(async () => {
-          await connection.sendRawTransaction(rawTransaction, {
-            maxRetries: 0,
-            minContextSlot: context.slot,
-            preflightCommitment: commitment,
-            skipPreflight: true,
-          })
-        });
-        transactionSent = true;
-      }
-    } catch (e) {
-      if (
-        transactionSent ||
-        (e instanceof SendTransactionError && e.message.includes("Minimum context slot has not been reached"))
-      ) {
-        await sleep(500);
-        continue;
-      }
-      throw e;
+    const { context, value: recentBlockInfo } = await connection.getLatestBlockhashAndContext({ commitment });
+    let tx = buildStreamTransaction(ixs, recentBlockInfo.blockhash, sender, metadata);
+    const res = await simulateTransaction(connection, tx);
+    let newCu = DEFAULT_CU;
+    if (res.value.unitsConsumed) {
+      newCu = Math.floor(res.value.unitsConsumed * CU_MULTIPLIER);
     }
-    await sleep(500);
-    try {
-      const value = await confirmAndEnsureTransaction(connection, signature);
-      if (value) {
-        return { txId: signature, contractId: metadata.publicKey.toBase58() };
+    ixs = [
+      ...prepareBaseInstructions(connection, {
+        computePrice,
+        computeLimit: newCu,
+      }),
+      ix,
+    ]
+    tx = buildStreamTransaction(ixs, recentBlockInfo.blockhash, sender, metadata);
 
-      }
-    } catch (e) {
-      if (e instanceof TransactionFailedError) {
+    let signature = bs58.encode(tx.signatures[0]);
+    let blockheight = await connection.getBlockHeight(commitment);
+    const rawTransaction = tx.serialize();
+    let transactionSent = false;
+    while (blockheight < recentBlockInfo.lastValidBlockHeight + 15) {
+      try {
+        if (blockheight < recentBlockInfo.lastValidBlockHeight || !transactionSent) {
+          await SEND_QUEUE.add(() => connection.sendRawTransaction(rawTransaction, {
+              maxRetries: 0,
+              minContextSlot: context.slot,
+              preflightCommitment: commitment,
+              skipPreflight: true,
+            }),
+          );
+          transactionSent = true;
+        }
+      } catch (e) {
+        if (
+          transactionSent ||
+          (e instanceof SendTransactionError && e.message.includes("Minimum context slot has not been reached"))
+        ) {
+          await sleep(500);
+          continue;
+        }
         throw e;
       }
       await sleep(500);
+      try {
+        const value = await confirmAndEnsureTransaction(connection, signature);
+        if (value) {
+          return { txId: signature, contractId: metadata.publicKey.toBase58() };
+        }
+      } catch (e) {
+        if (e instanceof TransactionFailedError) {
+          throw e;
+        }
+        await sleep(500);
+      }
+      try {
+        blockheight = await connection.getBlockHeight(commitment);
+      } catch (_e) {
+        await sleep(500);
+      }
     }
-    try {
-      blockheight = await connection.getBlockHeight(commitment);
-    } catch (_e) {
-      await sleep(500);
-    }
+    console.warn(`${recipientInfo.address}: transaction ${signature} expired. Will retry in 5 seconds...`);
+    await sleep(5000);
   }
-
-  throw new Error(`${recipientInfo.address}: transaction ${signature} expired.`);
 };
