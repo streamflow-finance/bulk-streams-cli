@@ -3,10 +3,10 @@ import {
   Keypair,
   PublicKey,
   TransactionInstruction,
-  TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
 import { constants } from "@streamflow/stream/solana";
+import { buildTransactionAndSign } from "./transactions";
 
 const MINT_OFFSET = 177;
 
@@ -35,12 +35,5 @@ export async function fetchExistingStream(connection: Connection, programId: Pub
 
 
 export function buildStreamTransaction(ixs: TransactionInstruction[], blockhash: string, sender: Keypair, metadata: Keypair): VersionedTransaction {
-  const messageV0 = new TransactionMessage({
-    payerKey: sender.publicKey,
-    recentBlockhash: blockhash,
-    instructions: ixs,
-  }).compileToV0Message();
-  const tx = new VersionedTransaction(messageV0);
-  tx.sign([sender, metadata]);
-  return tx;
+  return buildTransactionAndSign(ixs, blockhash, sender, metadata);
 }
