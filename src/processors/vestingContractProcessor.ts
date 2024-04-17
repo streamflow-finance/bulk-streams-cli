@@ -119,11 +119,11 @@ export const processVestingContract = async (
   ];
 
   while (true) {
-    const contractId = await fetchExistingStream(connection, pid, mint, recipientInfo.address);
-    if (contractId) {
-      console.log(`Recipient ${recipientInfo.address.toBase58()} already has a stream for this mint, will skip`);
-      return { txId: "", contractId: contractId };
-    }
+    // const contractId = await fetchExistingStream(connection, pid, mint, recipientInfo.address);
+    // if (contractId) {
+    //   console.log(`Recipient ${recipientInfo.address.toBase58()} already has a stream for this mint, will skip`);
+    //   return { txId: "", contractId: contractId };
+    // }
 
     const { context, value: recentBlockInfo } = await connection.getLatestBlockhashAndContext({ commitment });
     let tx = buildStreamTransaction(ixs, recentBlockInfo.blockhash, sender, metadata);
@@ -149,11 +149,11 @@ export const processVestingContract = async (
       try {
         if (blockheight < recentBlockInfo.lastValidBlockHeight || !transactionSent) {
           await SEND_QUEUE.add(() => connection.sendRawTransaction(rawTransaction, {
-              maxRetries: 0,
-              minContextSlot: context.slot,
-              preflightCommitment: commitment,
-              skipPreflight: true,
-            }),
+            maxRetries: 0,
+            minContextSlot: context.slot,
+            preflightCommitment: commitment,
+            skipPreflight: true,
+          }),
           );
           transactionSent = true;
         }
