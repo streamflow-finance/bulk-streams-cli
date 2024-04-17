@@ -18,7 +18,7 @@
     "@solana/spl-token-registry": "0.2.7",
     "@solana/web3.js": "^1.90.0",
     "@streamflow/common": "^6.0.3",
-    "@streamflow/stream": "^6.1.1",
+    "@streamflow/stream": "^6.2.1",
     "ansi-colors": "^4.1.3",
     "bignumber.js": "^9.1.2",
     "bs58": "^5.0.0",
@@ -31,6 +31,7 @@
     "map-stream": "^0.0.7",
     "node-fetch": "^3.3.2",
     "progress": "^2.0.3",
+    "p-queue": "^6.6.2",
     "stream-throttle": "^0.1.3",
     "throttled-queue": "^2.1.4"
   },

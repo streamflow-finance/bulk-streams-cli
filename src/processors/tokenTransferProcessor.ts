@@ -1,14 +1,34 @@
 import bs58 from "bs58";
 import {
+  createAssociatedTokenAccountInstruction,
   createTransferCheckedInstruction,
   getAssociatedTokenAddress,
 } from "@solana/spl-token";
-import { ComputeBudgetProgram, Connection, Keypair, PublicKey, Transaction, SendTransactionError, TransactionExpiredBlockheightExceededError } from "@solana/web3.js";
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  SendTransactionError,
+  TransactionInstruction,
+} from "@solana/web3.js";
+import { sleep } from "@streamflow/common";
+import {
+  confirmAndEnsureTransaction,
+  prepareBaseInstructions,
+  simulateTransaction,
+  TransactionFailedError,
+} from "@streamflow/common/solana";
 import { getBN } from "@streamflow/stream";
-import { confirmAndEnsureTransaction } from "@streamflow/common/solana";
+import PQueue from "p-queue";
 
 import { IRecipientInfo } from "../utils/recipientStream";
-import { getOrCreateAssociatedTokenAccount } from "../utils/spl";
+import { buildTransactionAndSign } from "../utils/transactions";
+
+const DEFAULT_CU = 220_000;
+const SIMULATION_CU = 500_000;
+const CU_MULTIPLIER = 1.1;
+// Up to 2 TX sends at a time, up to 2 per 1 second
+const SEND_QUEUE = new PQueue({ concurrency: 2, intervalCap: 2, interval: 1000 });
 
 export const processTokenTransfer = async (
   connection: Connection,
@@ -18,59 +38,95 @@ export const processTokenTransfer = async (
   decimals: number,
   computePrice?: number,
 ): Promise<{ txId: string }> => {
-  const recentBlockInfo = await connection.getLatestBlockhash();
-  const recipientAta = await getOrCreateAssociatedTokenAccount({ connection, payer: sender, mint, owner: recipientInfo.address, allowOwnerOffCurve: true, computePrice });
+  const recipientAta = await getAssociatedTokenAddress(mint, recipientInfo.address, true);
   const senderAta = await getAssociatedTokenAddress(mint, sender.publicKey, true);
   const amount = getBN(recipientInfo.amount, decimals).toString();
+  const recipientAtaExists = !!(await connection.getAccountInfo(recipientAta));
 
-  const ix = createTransferCheckedInstruction(
+  const txIxs: TransactionInstruction[] = [];
+  if (!recipientAtaExists) {
+    txIxs.push(createAssociatedTokenAccountInstruction(sender.publicKey, recipientAta, recipientInfo.address, mint));
+  }
+  txIxs.push(createTransferCheckedInstruction(
     senderAta,
     mint,
-    recipientAta.address,
+    recipientAta,
     sender.publicKey,
     BigInt(amount),
     decimals,
-  );
-  const tx = new Transaction({
-    feePayer: sender.publicKey,
-    ...recentBlockInfo,
-  });
-  if (computePrice) {
-    tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: computePrice }));
-  }
-  tx.add(ix);
-  tx.partialSign(sender);
-  let signature = bs58.encode(tx.signature!);
-  try {
-    signature = await connection.sendRawTransaction(tx.serialize(), { maxRetries: 3 });
-  } catch (err) {
-    if (err instanceof SendTransactionError && err.message.includes("Blockhash not found")) {
-      console.log(`\n${recipientInfo.address}: Got 'Blockhash not found', will validate the transaction landing in 3 seconds...`)
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-    } else {
-      throw err;
+  ));
+  let ixs: TransactionInstruction[] = [
+    ...prepareBaseInstructions(connection, {
+      computePrice,
+      computeLimit: SIMULATION_CU,
+    }),
+    ...txIxs,
+  ];
+
+  const commitment = "finalized";
+
+  while (true) {
+    const { context, value: recentBlockInfo } = await connection.getLatestBlockhashAndContext({ commitment });
+    let tx = buildTransactionAndSign(ixs, recentBlockInfo.blockhash, sender);
+    const res = await simulateTransaction(connection, tx);
+    let newCu = DEFAULT_CU;
+    if (res.value.unitsConsumed) {
+      newCu = Math.floor(res.value.unitsConsumed * CU_MULTIPLIER);
     }
-  }
-  try {
-    const res = await connection.confirmTransaction({
-      blockhash: recentBlockInfo.blockhash,
-      lastValidBlockHeight: recentBlockInfo.lastValidBlockHeight + 50,
-      signature
-    }, "confirmed");
-    if (res.value.err) {
-      throw new Error(res.value.err.toString());
-    }
-  } catch (e) {
-    // If BlockHeight expired, we will check tx status one last time to make sure
-    if (e instanceof TransactionExpiredBlockheightExceededError) {
-      console.log(`\n${recipientInfo.address}: Got 'BlockHeight expired', will try to confirm anyway in 3 seconds...`)
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      const value = await confirmAndEnsureTransaction(connection, signature);
-      if (!value) {
+    ixs = [
+      ...prepareBaseInstructions(connection, {
+        computePrice,
+        computeLimit: newCu,
+      }),
+      ...txIxs,
+    ];
+    tx = buildTransactionAndSign(ixs, recentBlockInfo.blockhash, sender);
+
+    let signature = bs58.encode(tx.signatures[0]);
+    let blockheight = await connection.getBlockHeight(commitment);
+    const rawTransaction = tx.serialize();
+    let transactionSent = false;
+    while (blockheight < recentBlockInfo.lastValidBlockHeight + 15) {
+      try {
+        if (blockheight < recentBlockInfo.lastValidBlockHeight || !transactionSent) {
+          await SEND_QUEUE.add(() => connection.sendRawTransaction(rawTransaction, {
+              maxRetries: 0,
+              minContextSlot: context.slot,
+              preflightCommitment: commitment,
+              skipPreflight: true,
+            }),
+          );
+          transactionSent = true;
+        }
+      } catch (e) {
+        if (
+          transactionSent ||
+          (e instanceof SendTransactionError && e.message.includes("Minimum context slot has not been reached"))
+        ) {
+          await sleep(500);
+          continue;
+        }
         throw e;
       }
+      await sleep(500);
+      try {
+        const value = await confirmAndEnsureTransaction(connection, signature);
+        if (value) {
+          return { txId: signature };
+        }
+      } catch (e) {
+        if (e instanceof TransactionFailedError) {
+          throw e;
+        }
+        await sleep(500);
+      }
+      try {
+        blockheight = await connection.getBlockHeight(commitment);
+      } catch (_e) {
+        await sleep(500);
+      }
     }
-    throw e;
+    console.warn(`${recipientInfo.address}: transaction ${signature} expired. Will retry in 5 seconds...`);
+    await sleep(5000);
   }
-  return { txId: signature };
 };

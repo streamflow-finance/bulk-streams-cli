@@ -1,10 +1,14 @@
+import PQueue from "p-queue";
 import ProgressBar from "progress";
+
+// To ensure that no more than 1 progress tick happens at a time
+const TICK_QUEUE = new PQueue({ concurrency: 1 });
 
 export class RecipientProgress {
   private progress: ProgressBar;
 
   constructor() {
-    this.progress = new ProgressBar("Processed: :current / Success :success / Errors: :retries / Invalid :invalid  ", {
+    this.progress = new ProgressBar("Processed: :current / Success :success / Errors: :retries / Invalid :invalid / Active :active  ", {
       total: 1000000,
     });
 
@@ -12,40 +16,25 @@ export class RecipientProgress {
       success: 0,
       invalid: 0,
       retries: 0,
+      active: 0,
     });
   }
 
-  public success() {
-    const success = (this.progress as any)?.tokens?.success || 0;
-    const invalid = (this.progress as any)?.tokens?.invalid || 0;
-    const retries = (this.progress as any)?.tokens?.retries || 0;
-    this.progress.tick({
-      success: success + 1,
-      invalid,
-      retries,
-    });
+  public async tick(token: "success" | "invalid" | "retries" | "active", tickCounter: number = 1, tokenCounter: number = 1) {
+    await TICK_QUEUE.add(() => {
+      const tokens = this.getProgressTokens();
+      tokens[token] += tokenCounter;
+      this.progress.tick(tickCounter, tokens);
+    })
   }
 
-  public invalid() {
-    const success = (this.progress as any)?.tokens?.success || 0;
-    const invalid = (this.progress as any)?.tokens?.invalid || 0;
-    const retries = (this.progress as any)?.tokens?.retries || 0;
-    this.progress.tick({
-      success,
-      invalid: invalid + 1,
-      retries,
-    });
-  }
-
-  public retry() {
-    const success = (this.progress as any)?.tokens?.success || 0;
-    const invalid = (this.progress as any)?.tokens?.invalid || 0;
-    const retries = (this.progress as any)?.tokens?.retries || 0;
-    this.progress.tick({
-      success,
-      invalid,
-      retries: retries + 1,
-    });
+  public getProgressTokens(): { success: number; invalid: number; retries: number; active: number } {
+    return {
+      success: (this.progress as any)?.tokens?.success || 0,
+      invalid: (this.progress as any)?.tokens?.invalid || 0,
+      retries: (this.progress as any)?.tokens?.retries || 0,
+      active: (this.progress as any)?.tokens?.active || 0,
+    };
   }
 
   public end() {

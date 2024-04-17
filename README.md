@@ -63,6 +63,18 @@ The script will enquire you about all vesting parameters in interactive prompt. 
 
 NOTE: to completely disable vesting options pass `--vesting-options=` (include equal sign to specify that the passed value is an empty string)
 
+#### Brute-force approach
+
+As Solana is heavily congested at the time of writing this, we've implemented a "brute-force" approach for Solana tx landing:
+
+- script retries transactions indefinitely until they either land or error out (blockhash expiring does not count);
+- with every tx send loop we check whether a Contract for mint/recipient combination already exist - if the do, we'll skip this recipient and write the existing Contract ID to success csv file;
+- custom rebroadcasting is implemented:
+  - we send tx in a loop and check whether it has landed with some backoff;
+  - we check for tx being landed until Blockhash of the tx expires + we add 15 blocks for checks to make sure;
+  - tx rebroadcasting by itself is throttled - as most of RPC pools have pretty strict limitations - up to 2 tx broadcasts in a second;
+- as TXs are basically racing with each other we limited the concurrency of Vesting Contracts creation - up to 20 Contracts will be processed at a time;
+
 ### Priority Fees
 
 Solana network may be congested, so using just base fee may not be enough to process transaction at times. In this case we recommend to use Priority Fees https://solana.com/developers/guides/advanced/how-to-use-priority-fees.
